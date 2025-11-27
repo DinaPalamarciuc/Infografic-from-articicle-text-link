@@ -25,7 +25,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkKey = async () => {
       // Priority 1: Check if key is already in environment (Deployment support)
-      if (process.env.API_KEY) {
+      // Check for both existence and non-empty string, avoiding "undefined" string literal edge cases
+      const envKey = process.env.API_KEY;
+      if (envKey && typeof envKey === 'string' && envKey.length > 0 && envKey !== 'undefined') {
         setHasApiKey(true);
         setCheckingKey(false);
         return;
@@ -38,7 +40,7 @@ const App: React.FC = () => {
       } else {
         // In environments without the AI Studio bridge and no env var, strictly checking might block dev.
         // However, per instructions to "Require a paid key", we default false if we can't verify.
-        // In a real deploy, window.aistudio is guaranteed.
+        // In a real deploy, window.aistudio is guaranteed to be missing, so we fall here.
         setHasApiKey(false);
       }
       setCheckingKey(false);

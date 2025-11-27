@@ -12,9 +12,11 @@ interface ApiKeyModalProps {
 
 const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onKeySelected }) => {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleConnect = async () => {
     setIsConnecting(true);
+    setErrorMsg(null);
     try {
       if (window.aistudio && window.aistudio.openSelectKey) {
         await window.aistudio.openSelectKey();
@@ -22,10 +24,15 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onKeySelected }) => {
         setTimeout(() => {
             onKeySelected();
         }, 500);
+      } else {
+         // Fallback for deployment where bridge is missing and env var wasn't set
+         setIsConnecting(false);
+         setErrorMsg("Configuration Error: API_KEY environment variable is missing. Please configure your deployment settings.");
       }
     } catch (e) {
       console.error("Failed to open key selector", e);
       setIsConnecting(false);
+      setErrorMsg("Failed to connect. Please try again.");
     }
   };
 
@@ -59,6 +66,12 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onKeySelected }) => {
                  </p>
              </div>
           </div>
+          
+          {errorMsg && (
+             <div className="w-full p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-red-300 text-xs font-mono text-left animate-in slide-in-from-top-1">
+                 > Error: {errorMsg}
+             </div>
+          )}
 
           <button 
             onClick={handleConnect}
