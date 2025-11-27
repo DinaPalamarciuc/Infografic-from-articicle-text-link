@@ -24,11 +24,19 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkKey = async () => {
+      // Priority 1: Check if key is already in environment (Deployment support)
+      if (process.env.API_KEY) {
+        setHasApiKey(true);
+        setCheckingKey(false);
+        return;
+      }
+
+      // Priority 2: Check via AI Studio bridge (Dev environment)
       if (window.aistudio && window.aistudio.hasSelectedApiKey) {
         const has = await window.aistudio.hasSelectedApiKey();
         setHasApiKey(has);
       } else {
-        // In environments without the AI Studio bridge, strictly checking might block dev.
+        // In environments without the AI Studio bridge and no env var, strictly checking might block dev.
         // However, per instructions to "Require a paid key", we default false if we can't verify.
         // In a real deploy, window.aistudio is guaranteed.
         setHasApiKey(false);
