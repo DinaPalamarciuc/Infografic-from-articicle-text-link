@@ -53,7 +53,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onKeySelected }) => {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-white font-sans">Paid Access Required</h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Link2Ink requires advanced Gemini models capable of <span className="text-slate-200 font-semibold">Image Generation</span>. These models are not available on the free tier.
+              Link2Infographic requires advanced Gemini models capable of <span className="text-slate-200 font-semibold">Image Generation</span>. These models are not available on the free tier.
             </p>
           </div>
 

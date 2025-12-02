@@ -15,6 +15,33 @@ export interface InfographicResult {
     citations: Citation[];
 }
 
+export async function improvePrompt(rawInput: string): Promise<string> {
+    const ai = getAiClient();
+    const prompt = `You are an expert AI Prompt Engineer specializing in Midjourney, DALL-E 3, and Gemini Image Generation for technical and architectural infographics.
+    
+    User Raw Idea: "${rawInput}"
+    
+    Task: Rewrite this into a highly detailed, professional image generation prompt.
+    Focus on:
+    1. Visual Style (e.g., Isometric, Flat, Neon, Bauhaus).
+    2. Lighting and Color Palette.
+    3. Texture and Rendering details (e.g., Vector line art, 3D Octane render, Matte finish).
+    4. Composition (e.g., Knolling, Flow chart, Blueprint).
+    
+    Constraint: Return ONLY the refined prompt text. Do not add conversational filler like "Here is the prompt".`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: { parts: [{ text: prompt }] }
+        });
+        return response.text?.trim() || rawInput;
+    } catch (error) {
+        console.error("Prompt improvement failed:", error);
+        return rawInput;
+    }
+}
+
 export async function generateInfographic(
   repoName: string, 
   fileTree: RepoFileTree[], 
@@ -188,64 +215,109 @@ export async function askNodeSpecificQuestion(
 }
 
 export async function generateArticleInfographic(
-  url: string, 
+  content: string, 
+  inputType: 'url' | 'text',
+  contentType: 'article' | 'product',
   style: string, 
   onProgress?: (stage: string) => void,
   language: string = "English"
 ): Promise<InfographicResult> {
     const ai = getAiClient();
     // PHASE 1: Content Understanding & Structural Breakdown (The "Planner")
-    if (onProgress) onProgress("RESEARCHING & ANALYZING CONTENT...");
+    if (onProgress) onProgress(contentType === 'product' ? "ANALYZING PRODUCT SPECS..." : "ANALYZING ARTICLE STRUCTURE...");
     
     let structuralSummary = "";
     let citations: Citation[] = [];
 
-    try {
-        const analysisPrompt = `You are an expert Information Designer. Your goal is to extract the essential structure from a web page to create a clear, educational infographic.
+    // Define specific prompts based on content type
+    const productSystemInstruction = `You are an E-commerce Visual Merchandising Expert. Your goal is to extract product specifications, key selling points, and features to create a high-converting product infographic.`;
+    const articleSystemInstruction = `You are an expert Information Designer. Your goal is to extract the essential structure from content to create a clear, educational infographic.`;
 
-        Analyze the content at this URL: ${url}
-        
-        TARGET LANGUAGE: ${language}.
-        
-        Provide a structured breakdown specifically designed for visual representation in ${language}:
-        1. INFOGRAPHIC HEADLINE: The core topic in 5 words or less (in ${language}).
-        2. KEY TAKEAWAYS: The 3 to 5 most important distinct points, steps, or facts (in ${language}). THESE WILL BE THE MAIN SECTIONS OF THE IMAGE.
-        3. SUPPORTING DATA: Any specific numbers, percentages, or very short quotes that add credibility.
-        4. VISUAL METAPHOR IDEA: Suggest ONE simple visual concept that best fits this content (e.g., "a roadmap with milestones", "a funnel", "three contrasting pillars", "a circular flowchart").
-        
-        Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
+    const productOutputReqs = `
+            1. PRODUCT NAME: The specific name of the item.
+            2. KEY FEATURES: The top 4-6 features (e.g. "Waterproof", "50h Battery", "Organic Cotton").
+            3. TECHNICAL SPECS: Specific data (Dimensions, Weight, Material, Ingredients).
+            4. VALUE PROPOSITION: One short sentence on why to buy it.
+            5. VISUAL METAPHOR IDEA: Suggest a layout (e.g., "Exploded view of components", "Feature callouts around central photo", "Comparison table").`;
+            
+    const articleOutputReqs = `
+            1. INFOGRAPHIC HEADLINE: The core topic in 5 words or less.
+            2. KEY TAKEAWAYS: The 3 to 5 most important distinct points, steps, or facts.
+            3. SUPPORTING DATA: Any specific numbers, percentages, or very short quotes.
+            4. VISUAL METAPHOR IDEA: Suggest ONE simple visual concept (e.g., "a roadmap", "three pillars").`;
 
-        // Switch to 'gemini-3-pro-image-preview' for research phase as requested.
-        const analysisResponse = await ai.models.generateContent({
-            model: 'gemini-3-pro-image-preview',
-            contents: analysisPrompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-                // Do NOT set responseMimeType or responseSchema when using tools
-            }
-        });
-        structuralSummary = analysisResponse.text || "";
+    const promptInstruction = contentType === 'product' ? productSystemInstruction : articleSystemInstruction;
+    const outputReqs = contentType === 'product' ? productOutputReqs : articleOutputReqs;
 
-        // Extract citations from grounding metadata with Titles
-        const chunks = analysisResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        if (chunks) {
-            chunks.forEach((chunk: any) => {
-                if (chunk.web?.uri) {
-                    citations.push({
-                        uri: chunk.web.uri,
-                        title: chunk.web.title || "" // Default to empty, handle in UI
-                    });
+    if (inputType === 'url') {
+        try {
+            const analysisPrompt = `${promptInstruction}
+
+            Analyze the content at this URL: ${content}
+            
+            TARGET LANGUAGE: ${language}.
+            
+            Provide a structured breakdown specifically designed for visual representation in ${language}:
+            ${outputReqs}
+            
+            Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
+
+            // Switch to 'gemini-3-pro-image-preview' for research phase as requested when using tools.
+            const analysisResponse = await ai.models.generateContent({
+                model: 'gemini-3-pro-image-preview',
+                contents: analysisPrompt,
+                config: {
+                    tools: [{ googleSearch: {} }],
                 }
             });
-            // Deduplicate citations based on URI
-            const uniqueCitations = new Map();
-            citations.forEach(c => uniqueCitations.set(c.uri, c));
-            citations = Array.from(uniqueCitations.values());
-        }
+            structuralSummary = analysisResponse.text || "";
 
-    } catch (e) {
-        console.warn("Content analysis failed, falling back to direct URL prompt", e);
-        structuralSummary = `Create an infographic about: ${url}. Translate text to ${language}.`;
+            // Extract citations from grounding metadata with Titles
+            const chunks = analysisResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            if (chunks) {
+                chunks.forEach((chunk: any) => {
+                    if (chunk.web?.uri) {
+                        citations.push({
+                            uri: chunk.web.uri,
+                            title: chunk.web.title || "" 
+                        });
+                    }
+                });
+                // Deduplicate citations based on URI
+                const uniqueCitations = new Map();
+                citations.forEach(c => uniqueCitations.set(c.uri, c));
+                citations = Array.from(uniqueCitations.values());
+            }
+
+        } catch (e) {
+            console.warn("Content analysis failed, falling back to direct prompt", e);
+            structuralSummary = `Create an infographic about: ${content}. Translate text to ${language}.`;
+        }
+    } else {
+        // Text Input Mode
+        try {
+            const analysisPrompt = `${promptInstruction}
+
+            SOURCE TEXT:
+            "${content.substring(0, 25000)}"
+            
+            TARGET LANGUAGE: ${language}.
+            
+            Provide a structured breakdown specifically designed for visual representation in ${language}:
+            ${outputReqs}
+            
+            Keep the output concise. Ensure all content is in ${language}.`;
+
+            const analysisResponse = await ai.models.generateContent({
+                model: 'gemini-3-pro-preview', // High reasoning model for text analysis
+                contents: analysisPrompt
+            });
+            structuralSummary = analysisResponse.text || "";
+            // No citations for raw text input
+        } catch (e) {
+             console.error("Text analysis failed", e);
+             structuralSummary = `Create an infographic based on the provided text. Translate text to ${language}.`;
+        }
     }
 
     // PHASE 2: Visual Synthesis (The "Artist")
@@ -265,6 +337,18 @@ export async function generateArticleInfographic(
         case "Modern Editorial":
             styleGuidelines = `STYLE: Modern, flat vector illustration style. Clean, professional, and editorial (like a high-end tech magazine). Cohesive, mature color palette.`;
             break;
+        case "Human-like Hand-Drawn":
+             styleGuidelines = `STYLE: Authentic hand-drawn illustration. Imperfect, sketchy lines, marker or pencil textures, warm paper-like background. Looks like a talented human drew it in a notebook. Inviting and approachable.`;
+             break;
+        case "Natural & Organic":
+             styleGuidelines = `STYLE: Natural, organic, and eco-friendly aesthetic. Earth tones (sage greens, terracottas, creams), soft textures, fluid curves instead of sharp angles. Botanical motifs if appropriate.`;
+             break;
+        case "E-commerce Showcase":
+             styleGuidelines = `STYLE: High-end Product Photography/Render Hybrid. Central photorealistic representation of the product, surrounded by clean, floating 3D text and icon callouts pointing to specific features. Studio lighting, clean background (white or soft gradient).`;
+             break;
+        case "Tech Spec Grid":
+             styleGuidelines = `STYLE: Technical Specification Sheet. Structured grid layout. Industrial design aesthetic. Monospaced fonts, ruler lines, precise alignment. High contrast black and white with one alert color (orange or yellow).`;
+             break;
         default:
             // Custom style logic
              if (style && style !== "Custom") {
@@ -275,7 +359,7 @@ export async function generateArticleInfographic(
             break;
     }
 
-    const imagePrompt = `Create a professional, high-quality educational infographic based strictly on this structured content plan:
+    const imagePrompt = `Create a professional, high-quality ${contentType === 'product' ? 'product feature' : 'educational'} infographic based strictly on this structured content plan:
 
     ${structuralSummary}
 
@@ -283,9 +367,9 @@ export async function generateArticleInfographic(
     - ${styleGuidelines}
     - LANGUAGE: The text within the infographic MUST be written in ${language}.
     - LAYOUT: MUST follow the "VISUAL METAPHOR IDEA" from the plan above if one was provided.
-    - TYPOGRAPHY: Clean, highly readable sans-serif fonts. The "INFOGRAPHIC HEADLINE" must be prominent at the top.
-    - CONTENT: Use the actual text from "KEY TAKEAWAYS" in the image. Do not use placeholder text like Lorem Ipsum.
-    - GOAL: The image must be informative and readable as a standalone graphic.
+    - TYPOGRAPHY: Clean, highly readable fonts. The Title/Headline must be prominent at the top.
+    - CONTENT: Use the analyzed facts/specs in the image. Do not use placeholder text.
+    - GOAL: The image must be ${contentType === 'product' ? 'convincing and showcase the product value' : 'informative and readable as a standalone graphic'}.
     `;
 
     try {

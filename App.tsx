@@ -10,19 +10,30 @@ import Home from './components/Home';
 import IntroAnimation from './components/IntroAnimation';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ViewMode, RepoHistoryItem, ArticleHistoryItem } from './types';
-import { Github, PenTool, GitBranch, FileText, Home as HomeIcon, CreditCard } from 'lucide-react';
+import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarChart3, Sun, Moon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.HOME);
   const [showIntro, setShowIntro] = useState(true);
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [checkingKey, setCheckingKey] = useState<boolean>(true);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   
   // Lifted History State for Persistence
   const [repoHistory, setRepoHistory] = useState<RepoHistoryItem[]>([]);
   const [articleHistory, setArticleHistory] = useState<ArticleHistoryItem[]>([]);
 
   useEffect(() => {
+    // Check local storage for theme preference
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme === 'light') {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    } else {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+
     const checkKey = async () => {
       // Priority 1: Check if key is already in environment (Deployment support)
       // Check for both existence and non-empty string, avoiding "undefined" string literal edge cases
@@ -48,6 +59,18 @@ const App: React.FC = () => {
     checkKey();
   }, []);
 
+  const toggleTheme = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
   const handleIntroComplete = () => {
     setShowIntro(false);
     // sessionStorage.setItem('hasSeenIntro', 'true'); // Disabled for dev/demo purposes
@@ -65,40 +88,49 @@ const App: React.FC = () => {
     setArticleHistory(prev => [item, ...prev]);
   };
 
-  const onReauthRequested = () => {
-    setHasApiKey(false); // This will trigger the modal to reappear
-  };
-
   if (checkingKey) {
-    return <div className="min-h-screen bg-slate-950" />;
+    return <div className="min-h-screen bg-slate-50 dark:bg-slate-950" />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col transition-colors duration-300">
       {/* Enforce API Key Modal */}
       {!hasApiKey && <ApiKeyModal onKeySelected={() => setHasApiKey(true)} />}
 
       {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
 
       <header className="sticky top-4 z-50 mx-auto w-[calc(100%-1rem)] md:w-[calc(100%-2rem)] max-w-[1400px]">
-        <div className="glass-panel rounded-2xl px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
+        <div className="glass-panel rounded-2xl px-4 md:px-6 py-3 md:py-4 flex justify-between items-center backdrop-blur-2xl dark:border-white/10 border-slate-200/50 shadow-2xl">
           <button 
             onClick={() => setCurrentView(ViewMode.HOME)}
             className="flex items-center gap-3 md:gap-4 group transition-opacity hover:opacity-80"
           >
-            <div className="relative flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-slate-900/50 border border-white/10 shadow-inner group-hover:border-violet-500/50 transition-colors">
-               <PenTool className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            {/* Custom Logo Composition */}
+            <div className="relative flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-950 border border-slate-300 dark:border-white/10 shadow-lg group-hover:border-violet-500/50 transition-colors overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-emerald-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+               <Link2 className="w-5 h-5 text-violet-500 dark:text-violet-400 absolute top-2.5 left-2.5 transform -rotate-45" />
+               <BarChart3 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 absolute bottom-2.5 right-2.5" />
             </div>
             <div className="text-left">
-              <h1 className="text-lg md:text-xl font-extrabold text-white tracking-tight font-sans flex items-center gap-2">
-                Link2Ink <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-mono text-slate-400 border border-white/5 hidden sm:inline-block">Studio</span>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans flex items-center gap-2">
+                Link<span className="text-violet-500 dark:text-violet-400">2</span>Infographic
               </h1>
-              <p className="text-xs font-mono text-slate-400 tracking-wider uppercase hidden sm:block">Visual Intelligence Platform</p>
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 tracking-wider uppercase hidden sm:block">Visual Intelligence Platform</p>
             </div>
           </button>
-          <div className="flex items-center gap-4">
+          
+          <div className="flex items-center gap-3">
+             {/* Theme Toggle */}
+             <button
+              onClick={toggleTheme}
+              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-yellow-300 hover:bg-white dark:hover:bg-slate-800 transition-all hover:shadow-lg"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {hasApiKey && (
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-400 font-mono uppercase tracking-widest cursor-help" title="API Key Active">
+                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono uppercase tracking-widest cursor-help hover:bg-emerald-500/20 transition-colors" title="API Key Active">
                     <CreditCard className="w-3 h-3" /> Paid Tier
                 </div>
             )}
@@ -106,7 +138,7 @@ const App: React.FC = () => {
               href="https://github.com" 
               target="_blank" 
               rel="noreferrer" 
-              className="p-2 md:p-2.5 rounded-xl bg-slate-900/50 border border-white/10 text-slate-400 hover:text-white hover:border-violet-500/50 transition-all hover:shadow-neon-violet"
+              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-violet-500/50 transition-all hover:shadow-lg hover:bg-white dark:hover:bg-slate-800"
             >
               <Github className="w-5 h-5" />
             </a>
@@ -118,21 +150,21 @@ const App: React.FC = () => {
         {/* Navigation Tabs (Hidden on Home, visible on tools) */}
         {currentView !== ViewMode.HOME && (
             <div className="flex justify-center mb-8 md:mb-10 animate-in fade-in slide-in-from-top-4 sticky top-24 z-40">
-            <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl">
+            <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-white/10">
                 <button
                 onClick={() => setCurrentView(ViewMode.HOME)}
-                className="relative flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                className="relative flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
                 title="Home"
                 >
                 <HomeIcon className="w-4 h-4" />
                 </button>
-                <div className="w-px h-6 bg-white/10 my-auto mx-1"></div>
+                <div className="w-px h-5 bg-slate-200 dark:bg-white/10 my-auto mx-1"></div>
                 <button
                 onClick={() => setCurrentView(ViewMode.REPO_ANALYZER)}
                 className={`relative flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono ${
                     currentView === ViewMode.REPO_ANALYZER
-                    ? 'text-white bg-white/10 shadow-glass-inset border border-white/10'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'text-white bg-slate-900 dark:bg-slate-800 shadow-lg border border-slate-700 dark:border-white/10'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
                 >
                 <GitBranch className="w-4 h-4" />
@@ -142,8 +174,8 @@ const App: React.FC = () => {
                 onClick={() => setCurrentView(ViewMode.ARTICLE_INFOGRAPHIC)}
                 className={`relative flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono ${
                     currentView === ViewMode.ARTICLE_INFOGRAPHIC
-                    ? 'text-emerald-100 bg-emerald-500/10 shadow-glass-inset border border-emerald-500/20'
-                    : 'text-slate-500 hover:text-slate-300'
+                    ? 'text-emerald-50 bg-emerald-600 dark:bg-emerald-900/30 shadow-lg border border-emerald-500/30'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
                 >
                 <FileText className="w-4 h-4" />
@@ -177,10 +209,10 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="py-6 mt-auto border-t border-white/5">
+      <footer className="py-8 mt-auto border-t border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-950/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto text-center px-4">
-          <p className="text-xs font-mono text-slate-600">
-            <span className="text-violet-500/70">link</span>:<span className="text-emerald-500/70">ink</span>$ Powered by Nano Banana Pro
+          <p className="text-base font-mono text-slate-500 dark:text-slate-500">
+            <span className="text-slate-700 dark:text-slate-300 font-bold">Link</span><span className="text-violet-500 dark:text-violet-400">2</span><span className="text-emerald-500 dark:text-emerald-400">Infographic</span>$ Powered by DinaMita
           </p>
         </div>
       </footer>

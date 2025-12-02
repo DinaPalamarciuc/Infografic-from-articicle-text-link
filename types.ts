@@ -48,6 +48,15 @@ export interface Citation {
     title: string;
 }
 
+export interface ImageMetadata {
+  title: string;
+  author: string;
+  description: string;
+  keywords: string;
+  copyright: string;
+  date: string;
+}
+
 export interface RepoHistoryItem {
   id: string;
   repoName: string;

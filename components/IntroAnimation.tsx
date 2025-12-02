@@ -25,7 +25,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   useEffect(() => {
     const timer1 = setTimeout(() => {
       setPhase('formula');
-      typewriterEffect("ƒ(link) + AI → Ink");
+      typewriterEffect("ƒ(link) + AI → Infographic");
     }, 2500);
 
     const timer2 = setTimeout(() => {
@@ -77,7 +77,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
     canvas.width = width;
     canvas.height = height;
 
-    const chars = "010101<>{}[]/\\Σ∫πƒ∆∇LINK2INK";
+    const chars = "010101<>{}[]/\\Σ∫πƒ∆∇LINK2INFOGRAPHIC";
     const particles: { x: number; y: number; z: number; char: string; color: string }[] = [];
     const particleCount = 400; // Optimized count
     
@@ -177,7 +177,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
       <div className={`absolute inset-0 flex items-center justify-center transition-all duration-700 transform ${phase === 'formula' ? 'scale-100 opacity-100 blur-0' : 'scale-150 opacity-0 blur-xl pointer-events-none'}`}>
          <div className="relative group text-center px-4">
             <div className="absolute -inset-12 bg-violet-500/20 rounded-full blur-3xl animate-pulse"></div>
-            <h1 className="relative text-3xl md:text-6xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-emerald-200 tracking-widest drop-shadow-[0_0_25px_rgba(139,92,246,0.6)]">
+            <h1 className="relative text-3xl md:text-5xl lg:text-6xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-emerald-200 tracking-widest drop-shadow-[0_0_25px_rgba(139,92,246,0.6)]">
               {formulaText}
               <span className="animate-pulse text-emerald-400">_</span>
             </h1>
