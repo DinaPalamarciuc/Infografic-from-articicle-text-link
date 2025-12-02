@@ -10,7 +10,7 @@ import Home from './components/Home';
 import IntroAnimation from './components/IntroAnimation';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ViewMode, RepoHistoryItem, ArticleHistoryItem } from './types';
-import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarChart3, Sun, Moon } from 'lucide-react';
+import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarChart3, Sun, Moon, Key } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.HOME);
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [checkingKey, setCheckingKey] = useState<boolean>(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
   
   // Lifted History State for Persistence
   const [repoHistory, setRepoHistory] = useState<RepoHistoryItem[]>([]);
@@ -35,8 +36,15 @@ const App: React.FC = () => {
     }
 
     const checkKey = async () => {
-      // Priority 1: Check if key is already in environment (Deployment support)
-      // Check for both existence and non-empty string, avoiding "undefined" string literal edge cases
+      // Priority 1: Check Local Storage (User Manual Input)
+      const storedKey = localStorage.getItem('gemini_api_key');
+      if (storedKey && storedKey.length > 0) {
+          setHasApiKey(true);
+          setCheckingKey(false);
+          return;
+      }
+
+      // Priority 2: Check if key is already in environment (Pre-Deployment)
       const envKey = process.env.API_KEY;
       if (envKey && typeof envKey === 'string' && envKey.length > 0 && envKey !== 'undefined') {
         setHasApiKey(true);
@@ -44,14 +52,15 @@ const App: React.FC = () => {
         return;
       }
 
-      // Priority 2: Check via AI Studio bridge (Dev environment)
+      // Priority 3: Check via AI Studio bridge (Dev environment)
       if (window.aistudio && window.aistudio.hasSelectedApiKey) {
         const has = await window.aistudio.hasSelectedApiKey();
-        setHasApiKey(has);
+        if (has) {
+            setHasApiKey(true);
+        } else {
+            setHasApiKey(false);
+        }
       } else {
-        // In environments without the AI Studio bridge and no env var, strictly checking might block dev.
-        // However, per instructions to "Require a paid key", we default false if we can't verify.
-        // In a real deploy, window.aistudio is guaranteed to be missing, so we fall here.
         setHasApiKey(false);
       }
       setCheckingKey(false);
@@ -87,6 +96,11 @@ const App: React.FC = () => {
   const handleAddArticleHistory = (item: ArticleHistoryItem) => {
     setArticleHistory(prev => [item, ...prev]);
   };
+  
+  const handleKeyUpdate = () => {
+      setHasApiKey(true);
+      setShowKeyModal(false);
+  };
 
   if (checkingKey) {
     return <div className="min-h-screen bg-slate-50 dark:bg-slate-950" />;
@@ -94,8 +108,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-300">
-      {/* Enforce API Key Modal */}
-      {!hasApiKey && <ApiKeyModal onKeySelected={() => setHasApiKey(true)} />}
+      {/* Enforce API Key Modal if no key, OR if explicitly requested */}
+      {(!hasApiKey || showKeyModal) && (
+        <ApiKeyModal 
+            onKeySelected={handleKeyUpdate} 
+            onCancel={() => setShowKeyModal(false)}
+            canCancel={hasApiKey} // Can only cancel if we already have a key
+        />
+      )}
 
       {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
 
@@ -120,6 +140,15 @@ const App: React.FC = () => {
           </button>
           
           <div className="flex items-center gap-3">
+             {/* API Key Settings */}
+             <button
+                onClick={() => setShowKeyModal(true)}
+                className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-800 transition-all hover:shadow-lg"
+                title="Manage API Key"
+             >
+                <Key className="w-5 h-5" />
+             </button>
+
              {/* Theme Toggle */}
              <button
               onClick={toggleTheme}

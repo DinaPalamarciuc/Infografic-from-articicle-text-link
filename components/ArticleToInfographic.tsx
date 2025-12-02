@@ -538,8 +538,8 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                         </div>
                                         <div className="text-center">
                                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Upload screenshot</p>
-                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Extracts colors & branding only</p>
-                                            <p className="text-[9px] text-slate-400/70 dark:text-slate-500/70 mt-1 uppercase tracking-wider">(No content analysis)</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Extracts fonts & colors</p>
+                                            <p className="text-[9px] text-slate-400/70 dark:text-slate-500/70 mt-1 uppercase tracking-wider">(Ignores logos/UI elements)</p>
                                         </div>
                                     </>
                                 )}

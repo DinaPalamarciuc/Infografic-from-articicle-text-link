@@ -6,9 +6,17 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { RepoFileTree, Citation } from '../types';
 
-// Helper to ensure we always get the freshest key from the environment
-// immediately before a call.
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to ensure we always get the freshest key from storage or environment
+const getAiClient = () => {
+  const userKey = localStorage.getItem('gemini_api_key');
+  const apiKey = userKey || process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please enter your API key in the settings.");
+  }
+  
+  return new GoogleGenAI({ apiKey });
+};
 
 export interface InfographicResult {
     imageData: string | null;
@@ -333,10 +341,10 @@ export async function generateArticleInfographic(
     let styleGuidelines = "";
     if (referenceImage) {
         styleGuidelines = `VISUAL STYLE:
-        Match the aesthetic of the provided reference image provided in this prompt.
-        - Analyze the color palette, typography style, spacing, and general "vibe" of the reference image.
-        - Apply this visual identity to the generated infographic.
-        - Ensure the infographic looks like it belongs on the same website/brand as the reference image.`;
+        Match the *Abstract Aesthetic* of the provided reference image.
+        - EXTRACT ONLY: Color palette, typography style (font weight/serif/sans), background color/texture, and general spacing/layout vibe.
+        - STRICTLY IGNORE: Do NOT copy logos, specific navigation bars, menu items, categories, buttons, or specific text from the reference image.
+        - GOAL: Create a fresh infographic for the provided text content that uses the *colors and fonts* of the reference, but does NOT look like a screenshot of the reference website.`;
     } else {
         // Fallback to presets if no reference image
         switch (style) {
@@ -347,7 +355,7 @@ export async function generateArticleInfographic(
                 styleGuidelines = `STYLE: Ultra-minimalist. Lots of whitespace, thin lines, limited color palette (1-2 accent colors max). Very sophisticated and airy.`;
                 break;
             case "Dark Mode Tech":
-                styleGuidelines = `STYLE: Dark mode technical aesthetic. Dark slate/black background with bright, glowing accent colors (cyan, lime green) for data points.`;
+                styleGuidelines = `STYLE: Dark mode technical aesthetic. Dark slate/black background with glowing accent colors (cyan, lime green) for data points.`;
                 break;
             case "Modern Editorial":
                 styleGuidelines = `STYLE: Modern, flat vector illustration style. Clean, professional, and editorial (like a high-end tech magazine). Cohesive, mature color palette.`;
