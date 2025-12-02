@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { fetchRepoFileTree } from '../services/githubService';
 import { generateInfographic, improvePrompt } from '../services/geminiService';
 import { RepoFileTree, ViewMode, RepoHistoryItem, ImageMetadata } from '../types';
-import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Wand2, Check, X, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Wand2, Check, X, ShieldAlert, RectangleHorizontal, RectangleVertical, Square } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -24,6 +24,12 @@ const FLOW_STYLES = [
     "Corporate Minimal",
     "Neon Cyberpunk",
     "Custom"
+];
+
+const ASPECT_RATIOS = [
+    { label: "Wide (16:9)", value: "16:9", icon: RectangleHorizontal },
+    { label: "Square (1:1)", value: "1:1", icon: Square },
+    { label: "Tall (9:16)", value: "9:16", icon: RectangleVertical },
 ];
 
 const LANGUAGES = [
@@ -49,6 +55,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
+  const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIOS[0].value);
   const [customStyle, setCustomStyle] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +207,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
       
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
 
-      const infographicBase64 = await generateInfographic(repoDetails.repo, fileTree, styleToUse, false, selectedLanguage);
+      const infographicBase64 = await generateInfographic(repoDetails.repo, fileTree, styleToUse, false, selectedLanguage, selectedRatio);
       
       if (infographicBase64) {
         setInfographicData(infographicBase64);
@@ -222,7 +229,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
     setGenerating3D(true);
     try {
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
-      const data = await generateInfographic(currentRepoName, currentFileTree, styleToUse, true, selectedLanguage);
+      const data = await generateInfographic(currentRepoName, currentFileTree, styleToUse, true, selectedLanguage, selectedRatio);
       if (data) {
           setInfographic3DData(data);
           addToHistory(currentRepoName, data, true, styleToUse);
@@ -272,6 +279,17 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
         <p className="text-slate-600 dark:text-slate-300 text-xl md:text-2xl font-light tracking-wide">
           Turn any repository into a fully analyzed, interactive architectural blueprint.
         </p>
+
+         {/* Informational Guide */}
+         <div className="bg-violet-50 dark:bg-violet-900/10 border border-violet-200 dark:border-violet-500/20 rounded-xl p-4 text-left max-w-2xl mx-auto flex items-start gap-3 shadow-sm">
+             <Box className="w-5 h-5 text-violet-500 dark:text-violet-400 shrink-0 mt-0.5" />
+             <div className="space-y-1">
+                 <h3 className="text-sm font-bold text-violet-700 dark:text-violet-300 font-mono">How to use GitFlow</h3>
+                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                     Enter a <strong>Public GitHub Repository</strong> (e.g., <code>facebook/react</code>). Our AI analyzes the file structure to visualize the logical data flow. Use the <strong>"3D Model"</strong> view for a holographic tabletop perspective.
+                 </p>
+             </div>
+         </div>
       </div>
 
       {/* Input Section */}
@@ -299,28 +317,50 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
              </div>
           </div>
 
-          {/* Controls: Style and Language */}
+          {/* Controls: Style, Ratio, and Language */}
           <div className="mt-2 pt-2 border-t border-slate-200 dark:border-white/10 px-3 pb-1 space-y-3">
-             {/* Style Selector */}
-             <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-                 <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-sm uppercase tracking-wider shrink-0 font-bold">
-                     <Palette className="w-4 h-4" /> Style:
+             {/* Style & Ratio Row */}
+             <div className="flex flex-col sm:flex-row gap-3">
+                 {/* Style Selector */}
+                 <div className="flex items-center gap-3 overflow-x-auto no-scrollbar flex-1">
+                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-sm uppercase tracking-wider shrink-0 font-bold">
+                         <Palette className="w-4 h-4" /> Style:
+                     </div>
+                     <div className="flex gap-2">
+                         {FLOW_STYLES.map(style => (
+                             <button
+                                key={style}
+                                type="button"
+                                onClick={() => setSelectedStyle(style)}
+                                className={`text-sm px-3 py-1.5 rounded-md font-mono transition-all whitespace-nowrap font-medium ${
+                                    selectedStyle === style 
+                                    ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-200 border border-violet-200 dark:border-violet-500/30 shadow-sm' 
+                                    : 'bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent hover:border-slate-300 dark:hover:border-white/10'
+                                }`}
+                             >
+                                 {style}
+                             </button>
+                         ))}
+                     </div>
                  </div>
-                 <div className="flex gap-2">
-                     {FLOW_STYLES.map(style => (
-                         <button
-                            key={style}
+                 
+                 {/* Aspect Ratio Selector */}
+                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg p-1 shrink-0 self-start sm:self-auto">
+                    {ASPECT_RATIOS.map(ratio => (
+                        <button
+                            key={ratio.value}
                             type="button"
-                            onClick={() => setSelectedStyle(style)}
-                            className={`text-sm px-3 py-1.5 rounded-md font-mono transition-all whitespace-nowrap font-medium ${
-                                selectedStyle === style 
-                                ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-200 border border-violet-200 dark:border-violet-500/30 shadow-sm' 
-                                : 'bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent hover:border-slate-300 dark:hover:border-white/10'
+                            onClick={() => setSelectedRatio(ratio.value)}
+                            className={`p-1.5 rounded-md transition-all ${
+                                selectedRatio === ratio.value
+                                ? 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
-                         >
-                             {style}
-                         </button>
-                     ))}
+                            title={ratio.label}
+                        >
+                            <ratio.icon className="w-4 h-4" />
+                        </button>
+                    ))}
                  </div>
              </div>
              

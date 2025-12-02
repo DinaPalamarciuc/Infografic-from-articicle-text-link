@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { generateArticleInfographic, improvePrompt } from '../services/geminiService';
 import { Citation, ArticleHistoryItem, ImageMetadata } from '../types';
-import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon } from 'lucide-react';
+import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -26,6 +26,13 @@ const SKETCH_STYLES = [
     "E-commerce Showcase",
     "Tech Spec Grid",
     "Custom"
+];
+
+const ASPECT_RATIOS = [
+    { label: "Tall (3:4)", value: "3:4", icon: RectangleVertical },
+    { label: "Mobile (9:16)", value: "9:16", icon: RectangleVertical },
+    { label: "Square (1:1)", value: "1:1", icon: Square },
+    { label: "Wide (16:9)", value: "16:9", icon: RectangleHorizontal },
 ];
 
 const LANGUAGES = [
@@ -56,6 +63,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   
   const [selectedStyle, setSelectedStyle] = useState(SKETCH_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
+  const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIOS[0].value);
   const [customStyle, setCustomStyle] = useState('');
   const [loading, setLoading] = useState(false);
   const [imageData, setImageData] = useState<string | null>(null);
@@ -66,6 +74,10 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   // Prompt Enhancer State
   const [improvingPrompt, setImprovingPrompt] = useState(false);
   const [suggestedPrompt, setSuggestedPrompt] = useState<string | null>(null);
+
+  // Reference Image State
+  const [referenceImage, setReferenceImage] = useState<{data: string, mimeType: string} | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Metadata State
   const [metadata, setMetadata] = useState<ImageMetadata>({
@@ -153,6 +165,28 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select a valid image file (PNG, JPG, WEBP).');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        // Extract strictly the base64 data part
+        const base64Data = base64.split(',')[1]; 
+        setReferenceImage({
+            data: base64Data,
+            mimeType: file.type
+        });
+        setError(null);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -192,7 +226,9 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
           (stage) => {
              setLoadingStage(stage);
           }, 
-          selectedLanguage
+          selectedLanguage,
+          referenceImage, // Pass the uploaded reference image
+          selectedRatio // Pass dimension
       );
       
       if (resultImage) {
@@ -238,6 +274,19 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
         <p className="text-slate-600 dark:text-slate-300 text-xl md:text-2xl font-light tracking-wide">
           Turn any article, <span className="text-emerald-600 dark:text-emerald-300 font-medium">product page</span>, or text into a stunning, easy-to-digest infographic.
         </p>
+
+        {/* Informational Guide */}
+        <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4 text-left max-w-2xl mx-auto flex items-start gap-3 shadow-sm">
+            <FileIcon className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+                <h3 className="text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono">How to use SiteSketch</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                   <strong>Mode 1 (Article):</strong> Summarizes long blog posts into key points.<br/>
+                   <strong>Mode 2 (Product):</strong> Creates a feature sheet with specs and selling points.<br/>
+                   Upload a screenshot in "Style Extractor" to match color/css vibes (content is ignored).
+                </p>
+            </div>
+        </div>
       </div>
 
       {/* Input Section */}
@@ -320,116 +369,191 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                 </div>
             </div>
 
-            {/* Style & Language Controls */}
-            <div className="grid md:grid-cols-2 gap-6">
-                {/* Style Selector */}
-                <div className="space-y-4">
-                     <label className="text-sm text-emerald-600 dark:text-emerald-400 font-mono tracking-wider flex items-center gap-2 font-bold">
-                        <Palette className="w-4 h-4" /> ARTISTIC_STYLE
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                        {SKETCH_STYLES.map(style => (
-                            <button
-                                key={style}
-                                type="button"
-                                onClick={() => setSelectedStyle(style)}
-                                className={`py-2 px-3 rounded-xl font-mono text-sm transition-all border whitespace-nowrap truncate font-medium ${
-                                    selectedStyle === style 
-                                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30' 
-                                    : 'bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-transparent dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-slate-200'
-                                }`}
-                            >
-                                {style}
-                            </button>
-                        ))}
-                    </div>
-                     {selectedStyle === 'Custom' && (
-                        <div className="space-y-2">
-                             <div className="relative">
-                                <input 
-                                    type="text" 
-                                    value={customStyle}
-                                    onChange={(e) => setCustomStyle(e.target.value)}
-                                    placeholder="Describe custom style..."
-                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono transition-all"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleImprovePrompt}
-                                    disabled={improvingPrompt || !customStyle.trim()}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold font-mono transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 dark:border-emerald-500/20"
-                                    title="Enhance prompt with AI"
-                                >
-                                    {improvingPrompt ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                                    <span>AI Enhance</span>
-                                </button>
-                             </div>
+            {/* Middle Section: Style, Language, and Reference Image */}
+            <div className="space-y-6">
+                
+                {/* Style & Language Grid */}
+                <div className="grid md:grid-cols-2 gap-6">
+                    {/* Style Selector */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm text-emerald-600 dark:text-emerald-400 font-mono tracking-wider flex items-center gap-2 font-bold">
+                                <Palette className="w-4 h-4" /> ARTISTIC_STYLE
+                            </label>
                             
-                            {/* AI Suggestion Box */}
-                            {suggestedPrompt && (
-                                <div className="w-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg p-3 animate-in fade-in slide-in-from-top-1">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-start gap-2">
-                                            <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
-                                            <div>
-                                                <p className="text-xs text-emerald-600 dark:text-emerald-300 font-bold uppercase mb-1">AI Enhanced Prompt</p>
-                                                <p className="text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">{suggestedPrompt}</p>
+                            {/* Aspect Ratio Selector */}
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1">
+                                {ASPECT_RATIOS.map(ratio => (
+                                    <button
+                                        key={ratio.value}
+                                        type="button"
+                                        onClick={() => setSelectedRatio(ratio.value)}
+                                        className={`p-1 rounded-md transition-all ${
+                                            selectedRatio === ratio.value
+                                            ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                        }`}
+                                        title={ratio.label}
+                                    >
+                                        <ratio.icon className="w-3.5 h-3.5" />
+                                    </button>
+                                ))}
+                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            {SKETCH_STYLES.map(style => (
+                                <button
+                                    key={style}
+                                    type="button"
+                                    onClick={() => setSelectedStyle(style)}
+                                    className={`py-2 px-3 rounded-xl font-mono text-sm transition-all border whitespace-nowrap truncate font-medium ${
+                                        selectedStyle === style 
+                                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30' 
+                                        : 'bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-transparent dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 hover:text-slate-900 dark:hover:text-slate-200'
+                                    }`}
+                                >
+                                    {style}
+                                </button>
+                            ))}
+                        </div>
+                        {selectedStyle === 'Custom' && (
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={customStyle}
+                                        onChange={(e) => setCustomStyle(e.target.value)}
+                                        placeholder="Describe custom style..."
+                                        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleImprovePrompt}
+                                        disabled={improvingPrompt || !customStyle.trim()}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold font-mono transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 dark:border-emerald-500/20"
+                                        title="Enhance prompt with AI"
+                                    >
+                                        {improvingPrompt ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                                        <span>AI Enhance</span>
+                                    </button>
+                                </div>
+                                
+                                {/* AI Suggestion Box */}
+                                {suggestedPrompt && (
+                                    <div className="w-full bg-emerald-5 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg p-3 animate-in fade-in slide-in-from-top-1">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start gap-2">
+                                                <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs text-emerald-600 dark:text-emerald-300 font-bold uppercase mb-1">AI Enhanced Prompt</p>
+                                                    <p className="text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">{suggestedPrompt}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 shrink-0">
+                                                <button 
+                                                    type="button"
+                                                    onClick={acceptSuggestion}
+                                                    className="p-1 bg-emerald-100 dark:bg-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/40 text-emerald-700 dark:text-emerald-200 rounded transition-colors"
+                                                    title="Use this prompt"
+                                                >
+                                                    <Check className="w-3 h-3" />
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setSuggestedPrompt(null)}
+                                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded transition-colors"
+                                                    title="Dismiss"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col gap-1 shrink-0">
-                                            <button 
-                                                type="button"
-                                                onClick={acceptSuggestion}
-                                                className="p-1 bg-emerald-100 dark:bg-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/40 text-emerald-700 dark:text-emerald-200 rounded transition-colors"
-                                                title="Use this prompt"
-                                            >
-                                                <Check className="w-3 h-3" />
-                                            </button>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setSuggestedPrompt(null)}
-                                                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded transition-colors"
-                                                title="Dismiss"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                        )}
+                        {/* Information about style */}
+                        <div className="flex gap-2 items-start px-1 pt-2">
+                            <div className="mt-0.5 text-emerald-500/40"><AlertCircle className="w-3 h-3" /></div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
+                            Select a preset style or use "Custom" to describe a specific artistic direction.
+                            </p>
                         </div>
-                     )}
-                     {/* Information about style */}
-                     <div className="flex gap-2 items-start px-1 pt-2">
-                        <div className="mt-0.5 text-emerald-500/40"><AlertCircle className="w-3 h-3" /></div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-medium">
-                           Select a preset style or use "Custom" to describe a specific artistic direction (e.g. "Bauhaus", "Pixel Art", "Oil Painting").
-                        </p>
+                    </div>
+
+                    {/* Right Column: Language & Visual Reference */}
+                    <div className="space-y-6">
+                        {/* Language Selector */}
+                        <div className="space-y-4">
+                            <label className="text-sm text-emerald-600 dark:text-emerald-400 font-mono tracking-wider flex items-center gap-2 font-bold">
+                                <Globe className="w-4 h-4" /> OUTPUT_LANGUAGE
+                            </label>
+                            <div className="relative w-full">
+                                <select
+                                    value={selectedLanguage}
+                                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono appearance-none cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors truncate pr-8 font-medium"
+                                >
+                                    {LANGUAGES.map((lang) => (
+                                        <option key={lang.value} value={lang.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-300">
+                                            {lang.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                         {/* Reference Image Uploader */}
+                         <div className="space-y-4">
+                            <label className="text-sm text-emerald-600 dark:text-emerald-400 font-mono tracking-wider flex items-center gap-2 font-bold">
+                                <ScanEye className="w-4 h-4" /> STYLE_EXTRACTOR <span className="text-[10px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 px-1.5 rounded ml-auto">CSS ONLY</span>
+                            </label>
+                            
+                            <div 
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`relative w-full h-32 rounded-xl border-2 border-dashed transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2 group ${referenceImage ? 'border-emerald-400 dark:border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-white/10 hover:border-emerald-300 dark:hover:border-emerald-500/30 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                            >
+                                {referenceImage ? (
+                                    <>
+                                        <img src={`data:${referenceImage.mimeType};base64,${referenceImage.data}`} className="absolute inset-0 w-full h-full object-cover opacity-50" alt="Reference" />
+                                        <div className="relative z-10 bg-black/60 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-mono font-bold backdrop-blur-sm">
+                                            <Check className="w-3 h-3" /> Image Loaded
+                                        </div>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setReferenceImage(null); }}
+                                            className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-md hover:bg-red-600 transition-colors z-20"
+                                            title="Remove image"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg group-hover:scale-110 transition-transform">
+                                            <Upload className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Upload screenshot</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Extracts colors & branding only</p>
+                                            <p className="text-[9px] text-slate-400/70 dark:text-slate-500/70 mt-1 uppercase tracking-wider">(No content analysis)</p>
+                                        </div>
+                                    </>
+                                )}
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange} 
+                                    className="hidden" 
+                                    accept="image/png, image/jpeg, image/webp" 
+                                />
+                            </div>
+                         </div>
                     </div>
                 </div>
-
-                 {/* Language Selector */}
-                 <div className="space-y-4 min-w-0">
-                     <label className="text-sm text-emerald-600 dark:text-emerald-400 font-mono tracking-wider flex items-center gap-2 font-bold">
-                        <Globe className="w-4 h-4" /> OUTPUT_LANGUAGE
-                    </label>
-                    <div className="relative w-full min-w-0">
-                        <select
-                            value={selectedLanguage}
-                            onChange={(e) => setSelectedLanguage(e.target.value)}
-                            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono appearance-none cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors truncate pr-8 font-medium"
-                        >
-                             {LANGUAGES.map((lang) => (
-                                <option key={lang.value} value={lang.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-300">
-                                    {lang.label}
-                                </option>
-                             ))}
-                        </select>
-                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                    </div>
-                 </div>
             </div>
 
             <button

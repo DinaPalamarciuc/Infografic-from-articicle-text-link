@@ -47,7 +47,8 @@ export async function generateInfographic(
   fileTree: RepoFileTree[], 
   style: string, 
   is3D: boolean = false,
-  language: string = "English"
+  language: string = "English",
+  aspectRatio: string = "16:9"
 ): Promise<string | null> {
   const ai = getAiClient();
   // Summarize architecture for the image prompt
@@ -94,6 +95,7 @@ export async function generateInfographic(
   - CENTRAL CONTAINER: Group core logic inside a clearly defined central area.
   - ICONS: Use relevant technical icons (databases, servers, code files, users).
   - TYPOGRAPHY: Highly readable technical font. Text MUST be in ${language}.
+  - ASPECT RATIO: ${aspectRatio}
   `;
 
   const prompt = `Create a highly detailed technical logical data flow diagram infographic for GitHub repository : "${repoName}".
@@ -119,6 +121,9 @@ export async function generateInfographic(
       },
       config: {
         responseModalities: [Modality.IMAGE],
+        imageConfig: {
+            aspectRatio: aspectRatio,
+        }
       },
     });
 
@@ -220,7 +225,9 @@ export async function generateArticleInfographic(
   contentType: 'article' | 'product',
   style: string, 
   onProgress?: (stage: string) => void,
-  language: string = "English"
+  language: string = "English",
+  referenceImage?: { data: string, mimeType: string } | null,
+  aspectRatio: string = "3:4"
 ): Promise<InfographicResult> {
     const ai = getAiClient();
     // PHASE 1: Content Understanding & Structural Breakdown (The "Planner")
@@ -324,39 +331,48 @@ export async function generateArticleInfographic(
     if (onProgress) onProgress("DESIGNING & RENDERING INFOGRAPHIC...");
 
     let styleGuidelines = "";
-    switch (style) {
-        case "Fun & Playful":
-            styleGuidelines = `STYLE: Fun, playful, vibrant 2D vector illustrations. Use bright colors, rounded shapes, and a friendly tone.`;
-            break;
-        case "Clean Minimalist":
-            styleGuidelines = `STYLE: Ultra-minimalist. Lots of whitespace, thin lines, limited color palette (1-2 accent colors max). Very sophisticated and airy.`;
-            break;
-        case "Dark Mode Tech":
-            styleGuidelines = `STYLE: Dark mode technical aesthetic. Dark slate/black background with bright, glowing accent colors (cyan, lime green) for data points.`;
-            break;
-        case "Modern Editorial":
-            styleGuidelines = `STYLE: Modern, flat vector illustration style. Clean, professional, and editorial (like a high-end tech magazine). Cohesive, mature color palette.`;
-            break;
-        case "Human-like Hand-Drawn":
-             styleGuidelines = `STYLE: Authentic hand-drawn illustration. Imperfect, sketchy lines, marker or pencil textures, warm paper-like background. Looks like a talented human drew it in a notebook. Inviting and approachable.`;
-             break;
-        case "Natural & Organic":
-             styleGuidelines = `STYLE: Natural, organic, and eco-friendly aesthetic. Earth tones (sage greens, terracottas, creams), soft textures, fluid curves instead of sharp angles. Botanical motifs if appropriate.`;
-             break;
-        case "E-commerce Showcase":
-             styleGuidelines = `STYLE: High-end Product Photography/Render Hybrid. Central photorealistic representation of the product, surrounded by clean, floating 3D text and icon callouts pointing to specific features. Studio lighting, clean background (white or soft gradient).`;
-             break;
-        case "Tech Spec Grid":
-             styleGuidelines = `STYLE: Technical Specification Sheet. Structured grid layout. Industrial design aesthetic. Monospaced fonts, ruler lines, precise alignment. High contrast black and white with one alert color (orange or yellow).`;
-             break;
-        default:
-            // Custom style logic
-             if (style && style !== "Custom") {
-                styleGuidelines = `STYLE: Custom User Style: "${style}".`;
-             } else {
+    if (referenceImage) {
+        styleGuidelines = `VISUAL STYLE:
+        Match the aesthetic of the provided reference image provided in this prompt.
+        - Analyze the color palette, typography style, spacing, and general "vibe" of the reference image.
+        - Apply this visual identity to the generated infographic.
+        - Ensure the infographic looks like it belongs on the same website/brand as the reference image.`;
+    } else {
+        // Fallback to presets if no reference image
+        switch (style) {
+            case "Fun & Playful":
+                styleGuidelines = `STYLE: Fun, playful, vibrant 2D vector illustrations. Use bright colors, rounded shapes, and a friendly tone.`;
+                break;
+            case "Clean Minimalist":
+                styleGuidelines = `STYLE: Ultra-minimalist. Lots of whitespace, thin lines, limited color palette (1-2 accent colors max). Very sophisticated and airy.`;
+                break;
+            case "Dark Mode Tech":
+                styleGuidelines = `STYLE: Dark mode technical aesthetic. Dark slate/black background with bright, glowing accent colors (cyan, lime green) for data points.`;
+                break;
+            case "Modern Editorial":
                 styleGuidelines = `STYLE: Modern, flat vector illustration style. Clean, professional, and editorial (like a high-end tech magazine). Cohesive, mature color palette.`;
-             }
-            break;
+                break;
+            case "Human-like Hand-Drawn":
+                 styleGuidelines = `STYLE: Authentic hand-drawn illustration. Imperfect, sketchy lines, marker or pencil textures, warm paper-like background. Looks like a talented human drew it in a notebook. Inviting and approachable.`;
+                 break;
+            case "Natural & Organic":
+                 styleGuidelines = `STYLE: Natural, organic, and eco-friendly aesthetic. Earth tones (sage greens, terracottas, creams), soft textures, fluid curves instead of sharp angles. Botanical motifs if appropriate.`;
+                 break;
+            case "E-commerce Showcase":
+                 styleGuidelines = `STYLE: High-end Product Photography/Render Hybrid. Central photorealistic representation of the product, surrounded by clean, floating 3D text and icon callouts pointing to specific features. Studio lighting, clean background (white or soft gradient).`;
+                 break;
+            case "Tech Spec Grid":
+                 styleGuidelines = `STYLE: Technical Specification Sheet. Structured grid layout. Industrial design aesthetic. Monospaced fonts, ruler lines, precise alignment. High contrast black and white with one alert color (orange or yellow).`;
+                 break;
+            default:
+                // Custom style logic
+                 if (style && style !== "Custom") {
+                    styleGuidelines = `STYLE: Custom User Style: "${style}".`;
+                 } else {
+                    styleGuidelines = `STYLE: Modern, flat vector illustration style. Clean, professional, and editorial (like a high-end tech magazine). Cohesive, mature color palette.`;
+                 }
+                break;
+        }
     }
 
     const imagePrompt = `Create a professional, high-quality ${contentType === 'product' ? 'product feature' : 'educational'} infographic based strictly on this structured content plan:
@@ -367,19 +383,35 @@ export async function generateArticleInfographic(
     - ${styleGuidelines}
     - LANGUAGE: The text within the infographic MUST be written in ${language}.
     - LAYOUT: MUST follow the "VISUAL METAPHOR IDEA" from the plan above if one was provided.
+    - ASPECT RATIO: ${aspectRatio}.
     - TYPOGRAPHY: Clean, highly readable fonts. The Title/Headline must be prominent at the top.
     - CONTENT: Use the analyzed facts/specs in the image. Do not use placeholder text.
     - GOAL: The image must be ${contentType === 'product' ? 'convincing and showcase the product value' : 'informative and readable as a standalone graphic'}.
     `;
 
+    const requestParts: any[] = [{ text: imagePrompt }];
+    
+    // Append reference image if available
+    if (referenceImage) {
+        requestParts.push({
+            inlineData: {
+                data: referenceImage.data,
+                mimeType: referenceImage.mimeType
+            }
+        });
+    }
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-image-preview',
             contents: {
-                parts: [{ text: imagePrompt }],
+                parts: requestParts,
             },
             config: {
                 responseModalities: [Modality.IMAGE],
+                imageConfig: {
+                    aspectRatio: aspectRatio,
+                }
             },
         });
 
