@@ -351,16 +351,17 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                     value={customStyle}
                                     onChange={(e) => setCustomStyle(e.target.value)}
                                     placeholder="Describe custom style..."
-                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-9 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono transition-all"
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono transition-all"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleImprovePrompt}
                                     disabled={improvingPrompt || !customStyle.trim()}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-emerald-500 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-white disabled:opacity-50 transition-colors"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold font-mono transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 dark:border-emerald-500/20"
                                     title="Enhance prompt with AI"
                                 >
                                     {improvingPrompt ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                                    <span>AI Enhance</span>
                                 </button>
                              </div>
                             
