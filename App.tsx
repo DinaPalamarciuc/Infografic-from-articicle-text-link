@@ -14,7 +14,7 @@ import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarCh
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.HOME);
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [checkingKey, setCheckingKey] = useState<boolean>(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
@@ -53,15 +53,16 @@ const App: React.FC = () => {
       }
 
       // Priority 3: Check via AI Studio bridge (Dev environment)
+      let keyFound = false;
       if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-        const has = await window.aistudio.hasSelectedApiKey();
-        if (has) {
-            setHasApiKey(true);
-        } else {
-            setHasApiKey(false);
-        }
+        keyFound = await window.aistudio.hasSelectedApiKey();
+      }
+
+      if (keyFound) {
+          setHasApiKey(true);
       } else {
-        setHasApiKey(false);
+          setHasApiKey(false);
+          setShowKeyModal(true); // Explicitly show modal if no key found
       }
       setCheckingKey(false);
     };
@@ -108,18 +109,18 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-300">
-      {/* Enforce API Key Modal if no key, OR if explicitly requested */}
-      {(!hasApiKey || showKeyModal) && (
+      {/* API Key Modal controlled strictly by state */}
+      {showKeyModal && (
         <ApiKeyModal 
             onKeySelected={handleKeyUpdate} 
             onCancel={() => setShowKeyModal(false)}
-            canCancel={hasApiKey} // Can only cancel if we already have a key
+            canCancel={true} // Always allow closing
         />
       )}
 
       {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
 
-      <header className="relative mt-4 z-50 mx-auto w-[calc(100%-1rem)] md:w-[calc(100%-2rem)] max-w-[1400px]">
+      <header className="relative mt-4 z-40 mx-auto w-[calc(100%-1rem)] md:w-[calc(100%-2rem)] max-w-[1400px]">
         <div className="glass-panel rounded-2xl px-4 md:px-6 py-3 md:py-4 flex justify-between items-center backdrop-blur-2xl dark:border-white/10 border-slate-200/50 shadow-2xl">
           <button 
             onClick={() => setCurrentView(ViewMode.HOME)}
@@ -178,7 +179,7 @@ const App: React.FC = () => {
       <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
         {/* Navigation Tabs (Hidden on Home, visible on tools) */}
         {currentView !== ViewMode.HOME && (
-            <div className="flex justify-center mb-8 md:mb-10 animate-in fade-in slide-in-from-top-4 relative z-40">
+            <div className="flex justify-center mb-8 md:mb-10 animate-in fade-in slide-in-from-top-4 relative z-30">
             <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-white/10">
                 <button
                 onClick={() => setCurrentView(ViewMode.HOME)}

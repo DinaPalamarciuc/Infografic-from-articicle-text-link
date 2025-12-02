@@ -23,6 +23,22 @@ export interface InfographicResult {
     citations: Citation[];
 }
 
+export async function verifyApiKey(apiKey: string): Promise<boolean> {
+    if (!apiKey) return false;
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        // Use a lightweight model for a quick ping test
+        await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: 'Ping' }] }
+        });
+        return true;
+    } catch (error) {
+        console.error("API Key Verification Failed:", error);
+        return false;
+    }
+}
+
 export async function improvePrompt(rawInput: string): Promise<string> {
     const ai = getAiClient();
     const prompt = `You are an expert AI Prompt Engineer specializing in Midjourney, DALL-E 3, and Gemini Image Generation for technical and architectural infographics.
