@@ -9,8 +9,9 @@ import ArticleToInfographic from './components/ArticleToInfographic';
 import Home from './components/Home';
 import IntroAnimation from './components/IntroAnimation';
 import ApiKeyModal from './components/ApiKeyModal';
+import ImageEditor from './components/ImageEditor';
 import { ViewMode, RepoHistoryItem, ArticleHistoryItem } from './types';
-import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarChart3, Sun, Moon, Key } from 'lucide-react';
+import { Github, GitBranch, FileText, Home as HomeIcon, CreditCard, Link2, BarChart3, Sun, Moon, Key, Image as ImageIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.HOME);
@@ -62,7 +63,8 @@ const App: React.FC = () => {
           setHasApiKey(true);
       } else {
           setHasApiKey(false);
-          setShowKeyModal(true); // Explicitly show modal if no key found
+          // Do NOT automatically show modal on load. Allow browsing.
+          // setShowKeyModal(true); 
       }
       setCheckingKey(false);
     };
@@ -144,8 +146,8 @@ const App: React.FC = () => {
              {/* API Key Settings */}
              <button
                 onClick={() => setShowKeyModal(true)}
-                className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-800 transition-all hover:shadow-lg"
-                title="Manage API Key"
+                className={`p-2 md:p-2.5 rounded-xl border transition-all hover:shadow-lg ${hasApiKey ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400'}`}
+                title={hasApiKey ? "API Key Active" : "Set API Key"}
              >
                 <Key className="w-5 h-5" />
              </button>
@@ -159,11 +161,6 @@ const App: React.FC = () => {
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {hasApiKey && (
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono uppercase tracking-widest cursor-help hover:bg-emerald-500/20 transition-colors" title="API Key Active">
-                    <CreditCard className="w-3 h-3" /> Paid Tier
-                </div>
-            )}
             <a 
               href="https://github.com" 
               target="_blank" 
@@ -225,6 +222,8 @@ const App: React.FC = () => {
                         onNavigate={handleNavigate} 
                         history={repoHistory} 
                         onAddToHistory={handleAddRepoHistory}
+                        hasApiKey={hasApiKey}
+                        onShowKeyModal={() => setShowKeyModal(true)}
                     />
                 </div>
             )}
@@ -233,6 +232,8 @@ const App: React.FC = () => {
                     <ArticleToInfographic 
                         history={articleHistory} 
                         onAddToHistory={handleAddArticleHistory}
+                        hasApiKey={hasApiKey}
+                        onShowKeyModal={() => setShowKeyModal(true)}
                     />
                 </div>
             )}

@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { fetchRepoFileTree } from '../services/githubService';
 import { generateInfographic, improvePrompt } from '../services/geminiService';
 import { RepoFileTree, ViewMode, RepoHistoryItem, ImageMetadata } from '../types';
-import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Wand2, Check, X, ShieldAlert, RectangleHorizontal, RectangleVertical, Square } from 'lucide-react';
+import { ShieldAlert, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Wand2, Check, X, RectangleHorizontal, RectangleVertical, Square } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -16,6 +16,8 @@ interface RepoAnalyzerProps {
   onNavigate: (mode: ViewMode, data?: any) => void;
   history: RepoHistoryItem[];
   onAddToHistory: (item: RepoHistoryItem) => void;
+  hasApiKey: boolean;
+  onShowKeyModal: () => void;
 }
 
 const FLOW_STYLES = [
@@ -51,7 +53,7 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddToHistory }) => {
+const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddToHistory, hasApiKey, onShowKeyModal }) => {
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -112,6 +114,10 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
   };
 
   const handleImprovePrompt = async () => {
+      if (!hasApiKey) {
+          onShowKeyModal();
+          return;
+      }
       if (!customStyle.trim()) return;
       setImprovingPrompt(true);
       setSuggestedPrompt(null);
@@ -174,6 +180,13 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Prompt for key if missing
+    if (!hasApiKey) {
+        onShowKeyModal();
+        return;
+    }
+
     setInfographicData(null);
     setInfographic3DData(null);
     setCurrentFileTree(null);
@@ -226,6 +239,12 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
 
   const handleGenerate3D = async () => {
     if (!currentFileTree || !currentRepoName) return;
+    
+    if (!hasApiKey) {
+        onShowKeyModal();
+        return;
+    }
+
     setGenerating3D(true);
     try {
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
@@ -447,7 +466,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
           <div className="flex-1 whitespace-pre-line leading-relaxed">{error}</div>
           {error.includes("Access Denied") && (
               <button 
-                onClick={() => window.location.reload()}
+                onClick={onShowKeyModal}
                 className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-xs font-bold transition-colors flex items-center gap-1 whitespace-nowrap"
               >
                  <KeyRound className="w-3 h-3" /> SWITCH KEY

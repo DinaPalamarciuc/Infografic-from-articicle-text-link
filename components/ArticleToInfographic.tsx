@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { generateArticleInfographic, improvePrompt } from '../services/geminiService';
 import { Citation, ArticleHistoryItem, ImageMetadata } from '../types';
-import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye, Box } from 'lucide-react';
+import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye, Box, KeyRound } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -14,6 +14,8 @@ import MetadataEditor from './MetadataEditor';
 interface ArticleToInfographicProps {
     history: ArticleHistoryItem[];
     onAddToHistory: (item: ArticleHistoryItem) => void;
+    hasApiKey: boolean;
+    onShowKeyModal: () => void;
 }
 
 const SKETCH_STYLES = [
@@ -54,7 +56,7 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, onAddToHistory }) => {
+const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, onAddToHistory, hasApiKey, onShowKeyModal }) => {
   const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
   const [contentType, setContentType] = useState<'article' | 'product'>('article');
   
@@ -92,6 +94,10 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   const [fullScreenImage, setFullScreenImage] = useState<{src: string, alt: string} | null>(null);
 
   const handleImprovePrompt = async () => {
+      if (!hasApiKey) {
+          onShowKeyModal();
+          return;
+      }
       if (!customStyle.trim()) return;
       setImprovingPrompt(true);
       setSuggestedPrompt(null);
@@ -142,6 +148,13 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Prompt for key if missing
+    if (!hasApiKey) {
+        onShowKeyModal();
+        return;
+    }
+
     setInfographicData(null);
     setCitations([]);
 
@@ -517,7 +530,15 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
             {error && (
                 <div className="p-4 glass-panel border-red-500/30 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 animate-in fade-in slide-in-from-top-2 font-mono text-sm bg-red-50/50 dark:bg-transparent shadow-lg">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">{error}</span>
+                    <div className="flex-1 whitespace-pre-line leading-relaxed">{error}</div>
+                    {error.includes("Access Denied") && (
+                        <button 
+                            onClick={onShowKeyModal}
+                            className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-xs font-bold transition-colors flex items-center gap-1 whitespace-nowrap"
+                        >
+                            <KeyRound className="w-3 h-3" /> SWITCH KEY
+                        </button>
+                    )}
                 </div>
             )}
         </div>
