@@ -3,22 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Link2Infographic - Visual Intelligence Platform</title>
-  <meta name="description" content="Transform GitHub repositories into architectural blueprints and web articles into professional infographics instantly with Link2Infographic. AI-powered visualization tools for developers and content creators. Powered by DinaMita.">
-  
+  <title>Link2Infographic - AI Visualizer for GitHub & Web Articles</title>
+  <meta name="description" content="Turn any link into a professional infographic. Visualize GitHub repositories as architectural blueprints and summarize web articles into visual cheat sheets using AI.">
+  <meta name="keywords" content="AI infographic generator, GitHub visualizer, codebase architecture diagram, article summarizer, visual intelligence, Gemini AI tool, web to infographic">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://link2infographic.com/" />
+
+  <!-- JSON-LD Schema: SoftwareApplication (Rich Snippet) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Link2Infographic",
+      "alternateName": "Link 2 Infographic",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "An AI-powered platform that transforms URLs into infographics. It converts GitHub repositories into 2D/3D architectural diagrams and summarizes articles into visual content.",
+      "featureList": [
+        "GitHub Repository Visualization",
+        "Codebase Architecture Diagrams",
+        "Article to Infographic Summarization",
+        "Product Specification Sheet Generation",
+        "3D Holographic Model Rendering"
+      ],
+      "screenshot": "https://link2infographic.com/screenshot.png",
+      "author": {
+        "@type": "Organization",
+        "name": "DinaMita"
+      }
+    }
+  </script>
+
+  <!-- JSON-LD Schema: FAQPage (Critical for AEO/Chatbot Answers) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [{
+        "@type": "Question",
+        "name": "How do I visualize a GitHub repository?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Simply paste a public GitHub URL (e.g., facebook/react) into Link2Infographic. Our AI analyzes the file tree and generates a logical data flow diagram or a 3D architectural model."
+        }
+      }, {
+        "@type": "Question",
+        "name": "Can I convert a blog post into an infographic?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Use the 'SiteSketch' feature to paste any article URL. The AI extracts key takeaways, statistics, and headers to generate a professional educational infographic."
+        }
+      }, {
+        "@type": "Question",
+        "name": "Is Link2Infographic free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Link2Infographic offers free visualization features. Advanced features like high-resolution 3D rendering utilize Google Gemini Pro models."
+        }
+      }, {
+        "@type": "Question",
+        "name": "What AI models are used?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We utilize Google's Gemini 2.5 Flash for rapid analysis and Gemini 3 Pro for high-fidelity image generation and complex reasoning."
+        }
+      }]
+    }
+  </script>
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://link2infographic.com/">
-  <meta property="og:title" content="Link2Infographic - Visual Intelligence Platform">
-  <meta property="og:description" content="Transform GitHub repositories into architectural blueprints and web articles into professional infographics instantly. Powered by DinaMita.">
-  <meta property="og:image" content="/logo.png">
+  <meta property="og:title" content="Link2Infographic - AI Visualizer">
+  <meta property="og:description" content="Turn code and content into beautiful infographics instantly.">
+  <meta property="og:image" content="https://link2infographic.com/og-image.png">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://link2infographic.com/">
-  <meta property="twitter:title" content="Link2Infographic - Visual Intelligence Platform">
-  <meta property="twitter:description" content="Transform GitHub repositories into architectural blueprints and web articles into professional infographics instantly. Powered by DinaMita.">
-  <meta property="twitter:image" content="/logo.png">
+  <meta property="twitter:title" content="Link2Infographic - AI Visualizer">
+  <meta property="twitter:description" content="Turn code and content into beautiful infographics instantly.">
+  <meta property="twitter:image" content="https://link2infographic.com/og-image.png">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,10 +135,9 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   
-  /* Dark Mode Body */
   html.dark body {
-    background-color: #020617; /* slate-950 */
-    color: #e2e8f0; /* slate-200 */
+    background-color: #020617;
+    color: #e2e8f0;
     background-image: 
       radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.15) 0px, transparent 50%), 
       radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
@@ -78,76 +147,84 @@
     background-attachment: fixed;
   }
 
-  /* Light Mode Body */
   html:not(.dark) body {
-    background-color: #f8fafc; /* slate-50 */
-    color: #0f172a; /* slate-900 */
+    background-color: #f8fafc;
+    color: #0f172a;
     background-image: 
       radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.05) 0px, transparent 50%), 
       radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
-      linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+      linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
     background-attachment: fixed;
   }
-
-  .glass-panel {
-    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  /* Dark Mode Glass */
-  html.dark .glass-panel {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 
-      inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
-      0 20px 40px -10px rgba(0, 0, 0, 0.6);
-  }
-
-  /* Light Mode Glass */
-  html:not(.dark) .glass-panel {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    box-shadow: 
-      0 4px 6px -1px rgba(0, 0, 0, 0.05), 
-      0 10px 15px -3px rgba(0, 0, 0, 0.05);
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  html.dark ::-webkit-scrollbar-track {
-    background: rgba(2, 6, 23, 0.5);
-  }
-  html.dark ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-  html.dark ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  html:not(.dark) ::-webkit-scrollbar-track {
-    background: rgba(241, 245, 249, 0.5);
-  }
-  html:not(.dark) ::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.3);
-    border-radius: 3px;
-  }
-  html:not(.dark) ::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.5);
-  }
 </style>
-<link rel="stylesheet" href="/index.css">
 </head>
-<body class="antialiased selection:bg-violet-500/30 min-h-screen">
-  <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+<body>
+  <div id="root">
+    <!-- 
+      GEO/AEO OPTIMIZATION:
+      The content below is static HTML that exists before React loads.
+      It provides "Generative Engine Optimization" by giving LLM crawlers
+      high-quality, semantic text to read immediately.
+    -->
+    <main style="max-width: 800px; margin: 0 auto; padding: 60px 20px; font-family: 'Inter', sans-serif; color: #94a3b8;">
+      
+      <header style="text-align: center; margin-bottom: 60px;">
+        <h1 style="font-size: 3rem; font-weight: 800; color: #e2e8f0; margin-bottom: 20px; letter-spacing: -0.05em;">
+          Link<span style="color: #8b5cf6;">2</span>Infographic
+        </h1>
+        <p style="font-size: 1.5rem; line-height: 1.5;">
+          The <strong style="color: #10b981;">AI Visual Intelligence Platform</strong>.
+        </p>
+      </header>
+
+      <article>
+        <section style="margin-bottom: 40px;">
+          <h2 style="font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 20px;">What is Link2Infographic?</h2>
+          <p style="font-size: 1.1rem; line-height: 1.7;">
+            Link2Infographic is a generative AI tool designed to transform raw URLs into professional visual assets. By leveraging Google Gemini models, it understands the context of a website—whether it's a complex GitHub repository or a lengthy news article—and synthesizes it into a clear, single-page infographic.
+          </p>
+        </section>
+
+        <section style="margin-bottom: 40px;">
+          <h2 style="font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 20px;">Core Capabilities</h2>
+          <dl style="display: grid; gap: 20px;">
+            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+              <dt style="font-size: 1.2rem; font-weight: 600; color: #a78bfa; margin-bottom: 10px;">GitFlow (GitHub Visualizer)</dt>
+              <dd>Automatically parses a public GitHub repository's file tree to generate a logical data flow diagram. It identifies entry points, processing logic, and output handling, rendering it as a blueprint or a 3D holographic model.</dd>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+              <dt style="font-size: 1.2rem; font-weight: 600; color: #34d399; margin-bottom: 10px;">SiteSketch (Article Summarizer)</dt>
+              <dd>Reads blog posts, news articles, or documentation. It extracts the headline, key takeaways, and supporting data points to create an educational infographic suitable for social media sharing.</dd>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+              <dt style="font-size: 1.2rem; font-weight: 600; color: #60a5fa; margin-bottom: 10px;">Product Spec Extractor</dt>
+              <dd>Analyzes e-commerce product pages to generate comparison charts and feature highlight graphics, perfect for visual merchandising.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 20px;">Frequently Asked Questions</h2>
+          <details open style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+            <summary style="font-weight: 600; color: #cbd5e1; cursor: pointer; margin-bottom: 10px;">How does the AI analyze code?</summary>
+            <p>We fetch the file tree via GitHub API and use Gemini Pro to interpret file names and types to infer architectural patterns without reading the entire codebase, ensuring privacy and speed.</p>
+          </details>
+          <details style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+            <summary style="font-weight: 600; color: #cbd5e1; cursor: pointer; margin-bottom: 10px;">Can I customize the visual style?</summary>
+            <p>Yes. You can choose from presets like "Neon Cyberpunk", "Blueprint", or "Minimalist", or provide a custom text prompt to guide the aesthetic generation.</p>
+          </details>
+        </section>
+      </article>
+
+      <footer style="margin-top: 60px; font-size: 0.9rem; text-align: center; opacity: 0.6;">
+        <p>&copy; 2024 Link2Infographic. Powered by Google Cloud Vertex AI.</p>
+      </footer>
+    </main>
+  </div>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
