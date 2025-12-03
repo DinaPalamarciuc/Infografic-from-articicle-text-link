@@ -6,6 +6,7 @@
 import React from 'react';
 import { ViewMode } from '../types';
 import { GitBranch, FileText, Link, BrainCircuit, Image, Sparkles, ArrowRight } from 'lucide-react';
+import FAQSection from './FAQSection';
 
 interface HomeProps {
   onNavigate: (mode: ViewMode) => void;
@@ -135,6 +136,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
              </div>
          </div>
       </div>
+
+      <FAQSection />
     </div>
   );
 };
