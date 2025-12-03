@@ -138,7 +138,7 @@ const App: React.FC = () => {
               <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans flex items-center gap-2">
                 Link<span className="text-violet-500 dark:text-violet-400">2</span>Infographic
               </h1>
-              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 tracking-wider uppercase hidden sm:block">Visual Intelligence Platform</p>
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-200 tracking-wider uppercase hidden sm:block">Visual Intelligence Platform</p>
             </div>
           </button>
           
@@ -146,7 +146,7 @@ const App: React.FC = () => {
              {/* API Key Settings */}
              <button
                 onClick={() => setShowKeyModal(true)}
-                className={`p-2 md:p-2.5 rounded-xl border transition-all hover:shadow-lg ${hasApiKey ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400'}`}
+                className={`p-2 md:p-2.5 rounded-xl border transition-all hover:shadow-lg ${hasApiKey ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-200 hover:text-red-500 dark:hover:text-red-400'}`}
                 title={hasApiKey ? "API Key Active" : "Set API Key"}
              >
                 <Key className="w-5 h-5" />
@@ -155,7 +155,7 @@ const App: React.FC = () => {
              {/* Theme Toggle */}
              <button
               onClick={toggleTheme}
-              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-yellow-300 hover:bg-white dark:hover:bg-slate-800 transition-all hover:shadow-lg"
+              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-200 hover:text-amber-500 dark:hover:text-yellow-300 hover:bg-white dark:hover:bg-slate-800 transition-all hover:shadow-lg"
               title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -165,7 +165,7 @@ const App: React.FC = () => {
               href="https://github.com" 
               target="_blank" 
               rel="noreferrer" 
-              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-violet-500/50 transition-all hover:shadow-lg hover:bg-white dark:hover:bg-slate-800"
+              className="p-2 md:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:border-violet-500/50 transition-all hover:shadow-lg hover:bg-white dark:hover:bg-slate-800"
             >
               <Github className="w-5 h-5" />
             </a>
@@ -180,7 +180,7 @@ const App: React.FC = () => {
             <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-white/10">
                 <button
                 onClick={() => setCurrentView(ViewMode.HOME)}
-                className="relative flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
+                className="relative flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
                 title="Home"
                 >
                 <HomeIcon className="w-4 h-4" />
@@ -191,7 +191,7 @@ const App: React.FC = () => {
                 className={`relative flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono ${
                     currentView === ViewMode.REPO_ANALYZER
                     ? 'text-white bg-slate-900 dark:bg-slate-800 shadow-lg border border-slate-700 dark:border-white/10'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 >
                 <GitBranch className="w-4 h-4" />
@@ -202,7 +202,7 @@ const App: React.FC = () => {
                 className={`relative flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono ${
                     currentView === ViewMode.ARTICLE_INFOGRAPHIC
                     ? 'text-emerald-50 bg-emerald-600 dark:bg-emerald-900/30 shadow-lg border border-emerald-500/30'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 >
                 <FileText className="w-4 h-4" />
@@ -242,8 +242,8 @@ const App: React.FC = () => {
 
       <footer className="py-8 mt-auto border-t border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-slate-950/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto text-center px-4">
-          <p className="text-base font-mono text-slate-500 dark:text-slate-500">
-            <span className="text-slate-700 dark:text-slate-300 font-bold">Link</span><span className="text-violet-500 dark:text-violet-400">2</span><span className="text-emerald-500 dark:text-emerald-400">Infographic</span>$ Powered by DinaMita
+          <p className="text-base font-mono text-slate-500 dark:text-slate-400">
+            <span className="text-slate-700 dark:text-slate-200 font-bold">Link</span><span className="text-violet-500 dark:text-violet-400">2</span><span className="text-emerald-500 dark:text-emerald-400">Infographic</span>$ Powered by DinaMita
           </p>
         </div>
       </footer>

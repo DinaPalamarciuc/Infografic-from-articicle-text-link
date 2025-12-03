@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { generateArticleInfographic, improvePrompt } from '../services/geminiService';
 import { Citation, ArticleHistoryItem, ImageMetadata } from '../types';
-import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye, Box, KeyRound } from 'lucide-react';
+import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye, Box, KeyRound, Clipboard, XCircle, Eraser, Lightbulb } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -62,6 +62,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   
   const [urlInput, setUrlInput] = useState('');
   const [textInput, setTextInput] = useState('');
+  const [activeInputFocus, setActiveInputFocus] = useState(false);
   
   const [selectedStyle, setSelectedStyle] = useState(SKETCH_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -143,6 +144,21 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
           };
           reader.readAsDataURL(file);
       }
+  };
+
+  const handlePaste = async () => {
+      try {
+          const text = await navigator.clipboard.readText();
+          if (inputMode === 'url') setUrlInput(text);
+          else setTextInput(text);
+      } catch (err) {
+          console.error('Failed to read clipboard contents: ', err);
+      }
+  };
+
+  const clearInput = () => {
+      if (inputMode === 'url') setUrlInput('');
+      else setTextInput('');
   };
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -248,7 +264,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 mb-20">
+    <div className="max-w-6xl mx-auto space-y-10 mb-20 px-4">
       
       {fullScreenImage && (
           <ImageViewer 
@@ -259,46 +275,34 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
       )}
 
       {/* Hero Section */}
-      <div className="text-center max-w-3xl mx-auto space-y-6">
-        <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white font-sans leading-tight drop-shadow-sm dark:drop-shadow-lg">
+      <div className="text-center max-w-3xl mx-auto space-y-4">
+        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white font-sans leading-tight">
           Web <span className="text-emerald-500 dark:text-emerald-400">Visualizer</span>.
         </h2>
-        <p className="text-slate-600 dark:text-slate-300 text-xl md:text-2xl font-light tracking-wide">
-          Convert articles, blogs, and product pages into beautiful infographics.
+        <p className="text-slate-600 dark:text-slate-100 text-lg font-light tracking-wide">
+          Turn long articles or product pages into clear, visual summaries.
         </p>
-
-        {/* Informational Guide */}
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4 text-left max-w-2xl mx-auto flex items-start gap-3 shadow-sm">
-             <BookOpen className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
-             <div className="space-y-1">
-                 <h3 className="text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono">How to use SiteSketch</h3>
-                 <ul className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed list-disc list-inside space-y-1">
-                     <li><strong>Article Mode:</strong> Summarizes key takeaways from long blog posts or news.</li>
-                     <li><strong>Product Mode:</strong> Extracts specs, features, and pros/cons for e-commerce.</li>
-                     <li><strong>Style Extractor:</strong> Upload a screenshot to mimic a brand's color palette.</li>
-                 </ul>
-             </div>
-         </div>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-8 items-start relative z-10">
-        {/* Input Column */}
+        
+        {/* Input Column (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
-            <form onSubmit={handleGenerate} className="glass-panel rounded-3xl p-5 space-y-6 bg-white/60 dark:bg-slate-900/60">
+            <form onSubmit={handleGenerate} className="glass-panel rounded-3xl p-5 space-y-6 bg-white/60 dark:bg-slate-900/60 sticky top-24">
                 
                 {/* Input Mode Toggle */}
                 <div className="flex p-1 bg-slate-100 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-white/10">
                     <button
                         type="button"
                         onClick={() => setInputMode('url')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'url' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'url' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                     >
                         <Link className="w-4 h-4" /> URL Link
                     </button>
                     <button
                         type="button"
                         onClick={() => setInputMode('text')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                     >
                         <AlignLeft className="w-4 h-4" /> Raw Text
                     </button>
@@ -306,58 +310,125 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
 
                 {/* Content Type Toggle */}
                 <div className="space-y-2">
-                    <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-bold">Content Type</label>
+                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold">What are we analyzing?</label>
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             type="button"
                             onClick={() => setContentType('article')}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'article' ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'article' ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         >
                             <FileIcon className="w-5 h-5" />
-                            <span className="text-xs font-bold">Article / Blog</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-white">Article / Blog</span>
                         </button>
                          <button
                             type="button"
                             onClick={() => setContentType('product')}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'product' ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-500/50 text-blue-700 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'product' ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-500/50 text-blue-700 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         >
                             <ShoppingBag className="w-5 h-5" />
-                            <span className="text-xs font-bold">Product Page</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-white">Product Page</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Main Input */}
                 <div className="space-y-2">
-                    <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-bold">Source Content</label>
+                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold">Source Content</label>
                     {inputMode === 'url' ? (
-                        <div className="relative group">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
-                                <Globe className="w-5 h-5" />
+                        <div className={`relative group transition-all duration-300 ${activeInputFocus ? 'scale-[1.01]' : ''}`}>
+                            <div className={`absolute inset-0 bg-emerald-500/20 blur-xl rounded-xl transition-opacity duration-300 ${activeInputFocus ? 'opacity-100' : 'opacity-0'}`}></div>
+                            <div className="relative bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden flex items-center shadow-sm">
+                                <div className="pl-4 text-slate-400 dark:text-slate-200">
+                                    <Globe className={`w-5 h-5 transition-colors ${activeInputFocus ? 'text-emerald-500' : ''}`} />
+                                </div>
+                                <input
+                                    type="url"
+                                    value={urlInput}
+                                    onChange={(e) => setUrlInput(e.target.value)}
+                                    onFocus={() => setActiveInputFocus(true)}
+                                    onBlur={() => setActiveInputFocus(false)}
+                                    placeholder="https://example.com/article"
+                                    list="url-suggestions"
+                                    className="w-full bg-transparent border-none py-4 pl-3 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 font-mono text-sm"
+                                />
+                                
+                                <div className="absolute right-2 flex items-center gap-1">
+                                    {urlInput && (
+                                        <button 
+                                            type="button"
+                                            onClick={clearInput}
+                                            className="p-1.5 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                                            title="Clear"
+                                        >
+                                            <XCircle className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {!urlInput && (
+                                        <button
+                                            type="button"
+                                            onClick={handlePaste}
+                                            className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                                            title="Paste from clipboard"
+                                        >
+                                            <Clipboard className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <input
-                                type="url"
-                                value={urlInput}
-                                onChange={(e) => setUrlInput(e.target.value)}
-                                placeholder="https://example.com/article"
-                                className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono text-sm"
-                            />
+                            <datalist id="url-suggestions">
+                                <option value="https://techcrunch.com/" />
+                                <option value="https://en.wikipedia.org/wiki/Artificial_intelligence" />
+                                <option value="https://github.com/features" />
+                                <option value="https://www.apple.com/iphone/" />
+                                <option value="https://www.tesla.com/cybertruck" />
+                            </datalist>
                         </div>
                     ) : (
-                        <textarea
-                            value={textInput}
-                            onChange={(e) => setTextInput(e.target.value)}
-                            placeholder="Paste article text or product description here..."
-                            rows={6}
-                            className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono text-sm resize-none"
-                        />
+                        <div className={`relative group transition-all duration-300 ${activeInputFocus ? 'scale-[1.01]' : ''}`}>
+                            <div className={`absolute inset-0 bg-emerald-500/20 blur-xl rounded-xl transition-opacity duration-300 ${activeInputFocus ? 'opacity-100' : 'opacity-0'}`}></div>
+                            <div className="relative bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm flex flex-col">
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">Content Editor</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={handlePaste}
+                                            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-300 hover:text-emerald-500 transition-colors px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                                        >
+                                            <Clipboard className="w-3 h-3" /> Paste
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={clearInput}
+                                            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-300 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                                        >
+                                            <Eraser className="w-3 h-3" /> Clear
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea
+                                    value={textInput}
+                                    onChange={(e) => setTextInput(e.target.value)}
+                                    onFocus={() => setActiveInputFocus(true)}
+                                    onBlur={() => setActiveInputFocus(false)}
+                                    placeholder="Paste article text or product description here..."
+                                    rows={8}
+                                    className="w-full bg-transparent border-none p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 font-mono text-sm resize-none leading-relaxed"
+                                />
+                                <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-white/5 text-right">
+                                    <span className={`text-[10px] font-mono ${textInput.length > 5000 ? 'text-red-500' : 'text-slate-400 dark:text-slate-300'}`}>
+                                        {textInput.length} chars
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
 
                 {/* Reference Image Upload */}
                 <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
                      <div className="flex items-center justify-between">
-                        <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-bold flex items-center gap-1.5">
+                        <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold flex items-center gap-1.5">
                             <ScanEye className="w-4 h-4" /> Style Extractor (CSS Only)
                         </label>
                         {referenceImage && (
@@ -396,8 +467,8 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                     <Upload className="w-5 h-5 text-slate-400 group-hover:text-emerald-400" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Upload Reference Screenshot</p>
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[200px] mx-auto">
+                                    <p className="text-xs font-bold text-slate-600 dark:text-white">Upload Reference Screenshot</p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-1 max-w-[200px] mx-auto">
                                         AI will match colors & fonts. <span className="text-red-400">Logos and UI elements are ignored.</span>
                                     </p>
                                 </div>
@@ -405,34 +476,47 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                         )}
                      </div>
                 </div>
+                
+                {/* PRO TIPS SECTION */}
+                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Lightbulb className="w-4 h-4 text-emerald-500" />
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase">Pro Tips</span>
+                    </div>
+                    <ul className="text-[11px] text-slate-600 dark:text-slate-200 space-y-1 list-disc list-inside">
+                        <li><strong>For Style Extractor:</strong> Use a screenshot of a website brand kit or landing page.</li>
+                        <li><strong>For Products:</strong> Ensure the URL is the specific product detail page, not the category page.</li>
+                        <li><strong>For Blogs:</strong> Long-form content (1000+ words) produces the best bullet-point summaries.</li>
+                    </ul>
+                </div>
 
                 {/* Design Controls */}
                 <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-white/10">
-                    <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-bold flex items-center gap-2">
+                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold flex items-center gap-2">
                         <Palette className="w-4 h-4" /> Design Configuration
                     </label>
 
                     {/* Language & Ratio Row */}
                     <div className="grid grid-cols-2 gap-3">
                          <div className="space-y-1.5">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold ml-1">Language</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-300 uppercase tracking-wider font-bold ml-1">Language</span>
                             <div className="relative">
                                 <select
                                     value={selectedLanguage}
                                     onChange={(e) => setSelectedLanguage(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-emerald-500/50"
+                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-white focus:ring-1 focus:ring-emerald-500/50"
                                 >
                                     {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                                 </select>
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold ml-1">Aspect Ratio</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-300 uppercase tracking-wider font-bold ml-1">Aspect Ratio</span>
                             <div className="relative">
                                 <select
                                     value={selectedRatio}
                                     onChange={(e) => setSelectedRatio(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-emerald-500/50"
+                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-white focus:ring-1 focus:ring-emerald-500/50"
                                 >
                                     {ASPECT_RATIOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                                 </select>
@@ -449,7 +533,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                 className={`px-2 py-2 rounded-lg text-xs font-mono text-center transition-all border ${
                                     selectedStyle === style
                                         ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
-                                        : 'bg-slate-50 dark:bg-slate-800/30 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-white/10'
+                                        : 'bg-slate-50 dark:bg-slate-800/30 border-transparent text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-white/10'
                                 }`}
                             >
                                 {style}
@@ -465,7 +549,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                     value={customStyle}
                                     onChange={(e) => setCustomStyle(e.target.value)}
                                     placeholder="Describe custom style..."
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono text-sm transition-all"
+                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono text-sm transition-all"
                                 />
                                 <div className="absolute right-1.5 top-1.5 bottom-1.5">
                                     <button
@@ -482,12 +566,6 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                         AI Enhance
                                     </button>
                                 </div>
-                            </div>
-                            
-                            {/* NEW: Informational Tip for Prompt Enhancement */}
-                            <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400 bg-violet-50 dark:bg-violet-900/10 p-3 rounded-xl border border-violet-100 dark:border-violet-500/10">
-                                <Sparkles className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />
-                                <span className="leading-relaxed"><strong className="text-violet-600 dark:text-violet-300">Pro Tip:</strong> Type a rough idea (e.g., "minimalist blue") and click <strong>AI Enhance</strong> to let Gemini rewrite it into a professional image generation prompt.</span>
                             </div>
 
                             {suggestedPrompt && (
@@ -543,7 +621,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
             )}
         </div>
 
-        {/* Output Column */}
+        {/* Output Column (3 cols) */}
         <div className="lg:col-span-3 min-h-[500px] flex flex-col">
             {loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-3xl">
@@ -609,14 +687,30 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                     <MetadataEditor initialData={metadata} onChange={setMetadata} />
                 </div>
             ) : (
+                // EMPTY STATE GUIDE
                 <div className="flex-1 glass-panel rounded-3xl flex flex-col items-center justify-center p-8 text-center border-dashed border-2 border-slate-300 dark:border-white/10 bg-white/40 dark:bg-slate-900/40">
-                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                        <FileIcon className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+                    <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                        <FileIcon className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2 font-sans">Ready to Create</h3>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
-                        Enter a URL or paste text on the left to generate a professional infographic.
+                    <h3 className="text-xl font-bold text-slate-700 dark:text-white mb-2 font-sans">Content Strategy Guide</h3>
+                    <p className="text-slate-500 dark:text-slate-200 max-w-sm leading-relaxed mb-8 text-sm">
+                        Choose your input type to determine the output format.
                     </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full text-left">
+                        <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/5">
+                            <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Articles -> Summaries</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-300">
+                                Perfect for creating LinkedIn carousels or educational posts from long reads.
+                            </p>
+                        </div>
+                        <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/5">
+                            <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Products -> Spec Sheets</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-300">
+                                Perfect for e-commerce visual merchandising and feature comparison.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -625,7 +719,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
       {/* History Grid */}
       {history.length > 0 && (
           <div className="pt-12 border-t border-slate-200 dark:border-white/10 animate-in fade-in">
-              <div className="flex items-center gap-2 mb-6 text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 mb-6 text-slate-500 dark:text-slate-300">
                   <Clock className="w-4 h-4" />
                   <h3 className="text-sm font-mono uppercase tracking-wider font-bold">Recent Sketches</h3>
               </div>
@@ -641,7 +735,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                           </div>
                           <div className="p-3">
                               <p className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">{item.title}</p>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">{new Date(item.date).toLocaleDateString()}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-300 mt-1 font-medium truncate">{new Date(item.date).toLocaleDateString()}</p>
                           </div>
                       </button>
                   ))}

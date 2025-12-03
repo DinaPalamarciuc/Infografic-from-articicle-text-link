@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ViewMode } from '../types';
-import { GitBranch, FileText, Link, BrainCircuit, Image, Sparkles, ArrowRight } from 'lucide-react';
+import { GitBranch, FileText, Link, BrainCircuit, Image, Sparkles, ArrowRight, CheckCircle2, Users, ShoppingBag, Code2 } from 'lucide-react';
 import FAQSection from './FAQSection';
 
 interface HomeProps {
@@ -14,10 +14,10 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   return (
-    <div className="max-w-4xl mx-auto space-y-20 mb-20">
+    <div className="max-w-5xl mx-auto space-y-24 mb-20">
       {/* Hero Section */}
       <div className="text-center space-y-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-sm font-mono text-slate-600 dark:text-slate-200 mb-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-default shadow-sm">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 text-sm font-mono text-slate-600 dark:text-white mb-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-default shadow-sm">
             <Sparkles className="w-4 h-4 text-fuchsia-500 dark:text-fuchsia-400" />
             <span>Powered by DinaMita</span>
         </div>
@@ -26,115 +26,119 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           Link2Infographic
         </h1>
         
-        <p className="text-slate-600 dark:text-slate-300 text-2xl font-light max-w-2xl mx-auto leading-relaxed">
-          Turn links into clear, professional infographics instantly.
+        <p className="text-slate-600 dark:text-slate-100 text-2xl font-light max-w-2xl mx-auto leading-relaxed">
+          Transform URLs into professional visual assets instantly using Generative AI.
         </p>
 
-        {/* Vertical Action Stack */}
-        <div className="flex flex-col items-center gap-6 pt-8 w-full max-w-[480px] mx-auto">
+        {/* Main Action Cards (Bento Grid) */}
+        <div className="grid md:grid-cols-2 gap-6 pt-8 w-full max-w-4xl mx-auto">
             
-            {/* GitHub Option */}
-            <div className="w-full flex items-center gap-4 group relative">
-                <div className="hidden md:flex flex-col items-end w-40 shrink-0 absolute -left-44 top-1/2 -translate-y-1/2">
-                    <span className="text-xs font-mono text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-1 text-right font-bold">GitHub Repo Here</span>
-                    <ArrowRight className="w-5 h-5 text-violet-500 dark:text-violet-400" />
+            {/* GitFlow Card */}
+            <button 
+                onClick={() => onNavigate(ViewMode.REPO_ANALYZER)}
+                className="relative group overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 p-8 text-left hover:border-violet-500/50 transition-all hover:shadow-2xl hover:shadow-violet-500/10"
+            >
+                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+                     <Code2 className="w-32 h-32 text-violet-500" />
                 </div>
                 
-                <button 
-                    onClick={() => onNavigate(ViewMode.REPO_ANALYZER)}
-                    className="w-full glass-panel p-5 rounded-2xl hover:bg-white dark:hover:bg-slate-800/80 transition-all border border-slate-200 dark:border-white/10 hover:border-violet-400 dark:hover:border-violet-500/50 text-left group-hover:translate-x-1 group-hover:shadow-neon-violet relative overflow-hidden bg-white/60 dark:bg-slate-900/60"
-                >
-                    <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <GitBranch className="w-24 h-24 -rotate-12 text-slate-900 dark:text-white" />
+                <div className="relative z-10 space-y-4">
+                    <div className="w-12 h-12 bg-violet-100 dark:bg-violet-500/20 rounded-2xl flex items-center justify-center text-violet-600 dark:text-violet-300 group-hover:bg-violet-500 group-hover:text-white transition-colors shadow-lg">
+                        <GitBranch className="w-6 h-6" />
                     </div>
-                    <div className="flex items-center gap-5 relative z-10">
-                        <div className="p-3.5 bg-violet-100 dark:bg-violet-500/20 rounded-xl text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20 group-hover:bg-violet-500 group-hover:text-white transition-colors shadow-lg">
-                            <GitBranch className="w-6 h-6" />
+                    <div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 font-sans group-hover:text-violet-500 transition-colors">GitFlow Visualizer</h3>
+                        <p className="text-slate-500 dark:text-slate-200 leading-relaxed text-sm">
+                            Paste a GitHub repository link to generate architectural blueprints and data flow diagrams.
+                        </p>
+                    </div>
+                    <div className="pt-4 flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-300 font-mono">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Visualize Logic Flow
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-200 transition-colors">GitHub Repo</h3>
-                            <p className="text-base text-slate-500 dark:text-slate-400 font-medium mt-1 group-hover:text-slate-600 dark:group-hover:text-slate-300">Data Flow Diagram</p>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-300 font-mono">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> 2D Diagrams & 3D Models
                         </div>
                     </div>
-                </button>
-            </div>
-
-            {/* Web Article Option */}
-            <div className="w-full flex items-center gap-4 group relative">
-                 <div className="hidden md:flex flex-col items-end w-40 shrink-0 absolute -left-44 top-1/2 -translate-y-1/2">
-                    <span className="text-xs font-mono text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 text-right font-bold">Any Other Link</span>
-                    <ArrowRight className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                    <div className="flex items-center gap-2 text-violet-500 font-bold text-sm mt-2 group-hover:translate-x-2 transition-transform">
+                        Start Analysis <ArrowRight className="w-4 h-4" />
+                    </div>
                 </div>
+            </button>
 
-                <button 
-                    onClick={() => onNavigate(ViewMode.ARTICLE_INFOGRAPHIC)}
-                    className="w-full glass-panel p-5 rounded-2xl hover:bg-white dark:hover:bg-slate-800/80 transition-all border border-slate-200 dark:border-white/10 hover:border-emerald-400 dark:hover:border-emerald-500/50 text-left group-hover:translate-x-1 group-hover:shadow-neon-emerald relative overflow-hidden bg-white/60 dark:bg-slate-900/60"
-                >
-                     <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <FileText className="w-24 h-24 -rotate-12 text-slate-900 dark:text-white" />
+            {/* SiteSketch Card */}
+            <button 
+                onClick={() => onNavigate(ViewMode.ARTICLE_INFOGRAPHIC)}
+                className="relative group overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/60 p-8 text-left hover:border-emerald-500/50 transition-all hover:shadow-2xl hover:shadow-emerald-500/10"
+            >
+                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+                     <FileText className="w-32 h-32 text-emerald-500" />
+                </div>
+                
+                <div className="relative z-10 space-y-4">
+                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors shadow-lg">
+                        <FileText className="w-6 h-6" />
                     </div>
-                    <div className="flex items-center gap-5 relative z-10">
-                        <div className="p-3.5 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white transition-colors shadow-lg">
-                            <FileText className="w-6 h-6" />
+                    <div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 font-sans group-hover:text-emerald-500 transition-colors">SiteSketch Designer</h3>
+                        <p className="text-slate-500 dark:text-slate-200 leading-relaxed text-sm">
+                            Convert articles, blog posts, or product pages into sharable summary infographics.
+                        </p>
+                    </div>
+                     <div className="pt-4 flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-300 font-mono">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Summarize Key Points
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-200 transition-colors">Web Article / Product</h3>
-                            <p className="text-base text-slate-500 dark:text-slate-400 font-medium mt-1 group-hover:text-slate-600 dark:group-hover:text-slate-300">Summary or Feature Sheet</p>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-300 font-mono">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Extract Product Specs
                         </div>
                     </div>
-                </button>
-            </div>
+                    <div className="flex items-center gap-2 text-emerald-500 font-bold text-sm mt-2 group-hover:translate-x-2 transition-transform">
+                        Create Infographic <ArrowRight className="w-4 h-4" />
+                    </div>
+                </div>
+            </button>
         </div>
       </div>
 
-      {/* 3-Step Process Visualization (Simplified) */}
-      <div className="relative pt-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 border-t border-slate-200 dark:border-white/10">
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 relative pt-10">
-             {/* Step 1 */}
-             <div className="flex flex-col items-center text-center space-y-4 group">
-                 <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/20 flex items-center justify-center shadow-lg group-hover:border-violet-500/50 transition-colors">
-                     <Link className="w-5 h-5 text-slate-500 dark:text-slate-300 group-hover:text-violet-500 dark:group-hover:text-violet-300 transition-colors" />
-                 </div>
-                 <div>
-                     <h3 className="text-slate-900 dark:text-white font-bold text-base font-mono uppercase tracking-wider mb-2">
-                        1. Paste Link
-                     </h3>
-                     <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed max-w-[200px] mx-auto">
-                        Use any public URL.
-                     </p>
-                 </div>
-             </div>
+      {/* Use Cases Section - Informational */}
+      <div className="border-t border-slate-200 dark:border-white/10 pt-16">
+          <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4 font-sans">Who is this for?</h2>
+              <p className="text-slate-500 dark:text-slate-200">Discover how visual intelligence accelerates your workflow.</p>
+          </div>
 
-             {/* Step 2 */}
-             <div className="flex flex-col items-center text-center space-y-4 group">
-                 <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-fuchsia-300 dark:border-fuchsia-500/40 flex items-center justify-center shadow-md dark:shadow-neon-violet">
-                     <BrainCircuit className="w-5 h-5 text-fuchsia-500 dark:text-fuchsia-300" />
-                 </div>
-                 <div>
-                     <h3 className="text-slate-900 dark:text-white font-bold text-base font-mono uppercase tracking-wider mb-2">
-                        2. Analyze
-                     </h3>
-                     <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed max-w-[200px] mx-auto">
-                        AI maps the structure.
-                     </p>
-                 </div>
-             </div>
+          <div className="grid md:grid-cols-3 gap-8">
+              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-6 border border-slate-200 dark:border-white/5">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                      <Code2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Developers</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
+                      Instant onboarding. Visualize complex codebases you've never seen before. Generate architecture diagrams for documentation automatically.
+                  </p>
+              </div>
 
-             {/* Step 3 */}
-             <div className="flex flex-col items-center text-center space-y-4 group">
-                 <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/20 flex items-center justify-center shadow-lg group-hover:border-emerald-500/50 transition-colors">
-                     <Image className="w-5 h-5 text-slate-500 dark:text-slate-300 group-hover:text-emerald-500 dark:group-hover:text-emerald-300 transition-colors" />
-                 </div>
-                 <div>
-                     <h3 className="text-slate-900 dark:text-white font-bold text-base font-mono uppercase tracking-wider mb-2">
-                        3. Visualize
-                     </h3>
-                     <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed max-w-[200px] mx-auto">
-                        Download your blueprint.
-                     </p>
-                 </div>
-             </div>
-         </div>
+              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-6 border border-slate-200 dark:border-white/5">
+                  <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mb-4">
+                      <Users className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Content Marketers</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
+                      Repurpose content. Turn a 2000-word blog post into a digestible, viral infographic for LinkedIn or Twitter in seconds.
+                  </p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-6 border border-slate-200 dark:border-white/5">
+                  <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-4">
+                      <ShoppingBag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">E-commerce</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-300 leading-relaxed">
+                      Visualize value. Create comparison charts and feature highlight sheets from product pages to increase conversion rates.
+                  </p>
+              </div>
+          </div>
       </div>
 
       <FAQSection />

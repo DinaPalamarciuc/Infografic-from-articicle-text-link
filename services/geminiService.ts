@@ -23,8 +23,8 @@ export interface InfographicResult {
     citations: Citation[];
 }
 
-export async function verifyApiKey(apiKey: string): Promise<boolean> {
-    if (!apiKey) return false;
+export async function verifyApiKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    if (!apiKey) return { valid: false, error: "API key is empty." };
     try {
         const ai = new GoogleGenAI({ apiKey });
         // Use a lightweight model for a quick ping test
@@ -32,10 +32,28 @@ export async function verifyApiKey(apiKey: string): Promise<boolean> {
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: 'Ping' }] }
         });
-        return true;
-    } catch (error) {
+        return { valid: true };
+    } catch (error: any) {
         console.error("API Key Verification Failed:", error);
-        return false;
+        let message = "Verification failed.";
+        
+        // Extract meaningful error info
+        if (error.message) {
+            const msg = error.message.toLowerCase();
+            if (msg.includes("403") || msg.includes("permission denied")) {
+                message = "Access Denied (403): Key lacks permissions or billing is not enabled.";
+            } else if (msg.includes("400") || msg.includes("invalid argument")) {
+                message = "Invalid Key (400): The API key format is incorrect.";
+            } else if (msg.includes("429") || msg.includes("quota")) {
+                message = "Quota Exceeded (429): Rate limit reached or billing quota exceeded.";
+            } else if (msg.includes("not found")) {
+                message = "Model Not Found: The key cannot access the required model.";
+            } else {
+                message = error.message;
+            }
+        }
+        
+        return { valid: false, error: message };
     }
 }
 

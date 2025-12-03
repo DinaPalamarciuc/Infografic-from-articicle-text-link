@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html.dark body {
+    color: #ffffff;
+  }
+  
+  /* Enforce high contrast for core text elements in dark mode */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: #ffffff !important;
+  }
+
+  .dark label {
+    color: #f8fafc !important; /* slate-50 */
+  }
+
+  .dark p, .dark span, .dark li {
+    color: #e2e8f0; /* slate-200 - ensure readability */
+  }
+  
+  .dark input, .dark textarea, .dark select {
+    color: #ffffff !important;
+  }
+
+  /* Make placeholders lighter in dark mode for readability */
+  .dark ::placeholder {
+    color: #94a3b8 !important; /* slate-400 */
+    opacity: 1;
+  }
+  
+  /* Ensure SVGs are visible */
+  .dark svg {
+     color: currentColor;
+  }
+}
