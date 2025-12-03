@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://link2infographic.com/sitemap.xml
+Sitemap: https://link2infographic-92345457269.us-west1.run.app/sitemap.xml
