@@ -1,12 +1,49 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { generateArticleInfographic, improvePrompt } from '../services/geminiService';
-import { Citation, ArticleHistoryItem, ImageMetadata } from '../types';
-import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize, AlignLeft, Wand2, Check, X, ShoppingBag, FileText as FileIcon, Upload, Image as ImageIcon, Trash2, RectangleHorizontal, RectangleVertical, Square, ScanEye, Box, KeyRound, Clipboard, XCircle, Eraser, Lightbulb } from 'lucide-react';
+import { downloadWithMetadata } from '../services/imageService';
+import { Citation, ArticleHistoryItem, ImageMetadata, GeminiModel } from '../types';
+import { 
+  Link, 
+  Loader2, 
+  Download, 
+  Sparkles, 
+  AlertCircle, 
+  Palette, 
+  Globe, 
+  ExternalLink, 
+  BookOpen, 
+  Maximize, 
+  AlignLeft, 
+  Wand2, 
+  Check, 
+  X, 
+  ShoppingBag, 
+  FileText as FileIcon, 
+  ImageIcon, 
+  Trash2, 
+  RectangleHorizontal, 
+  RectangleVertical, 
+  Square, 
+  ScanEye, 
+  Box, 
+  KeyRound, 
+  Clipboard, 
+  XCircle, 
+  ArrowRight,
+  HelpCircle,
+  Zap,
+  MousePointer2,
+  Cpu,
+  Eye,
+  FileImage,
+  History
+} from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -16,6 +53,7 @@ interface ArticleToInfographicProps {
     onAddToHistory: (item: ArticleHistoryItem) => void;
     hasApiKey: boolean;
     onShowKeyModal: () => void;
+    model: GeminiModel;
 }
 
 const SKETCH_STYLES = [
@@ -56,7 +94,7 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, onAddToHistory, hasApiKey, onShowKeyModal }) => {
+const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, onAddToHistory, hasApiKey, onShowKeyModal, model }) => {
   const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
   const [contentType, setContentType] = useState<'article' | 'product'>('article');
   
@@ -72,17 +110,11 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   const [error, setError] = useState<string | null>(null);
   const [loadingStage, setLoadingStage] = useState<string>('');
   
-  const [improvingPrompt, setImprovingPrompt] = useState(false);
-  const [suggestedPrompt, setSuggestedPrompt] = useState<string | null>(null);
-
   const [infographicData, setInfographicData] = useState<string | null>(null);
   const [citations, setCitations] = useState<Citation[]>([]);
   
-  // Reference Image State
   const [referenceImage, setReferenceImage] = useState<{ data: string, mimeType: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Metadata State
   const [metadata, setMetadata] = useState<ImageMetadata>({
       title: '',
       author: 'Link2Infographic',
@@ -94,56 +126,55 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
 
   const [fullScreenImage, setFullScreenImage] = useState<{src: string, alt: string} | null>(null);
 
-  const handleImprovePrompt = async () => {
-      if (!hasApiKey) {
-          onShowKeyModal();
-          return;
-      }
-      if (!customStyle.trim()) return;
-      setImprovingPrompt(true);
-      setSuggestedPrompt(null);
+  // Load Draft on Mount
+  useEffect(() => {
+    const draft = localStorage.getItem('l2i_article_draft');
+    if (draft) {
       try {
-          const better = await improvePrompt(customStyle);
-          setSuggestedPrompt(better);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setImprovingPrompt(false);
-      }
-  };
+        const parsed = JSON.parse(draft);
+        if (parsed.urlInput !== undefined) setUrlInput(parsed.urlInput);
+        if (parsed.textInput !== undefined) setTextInput(parsed.textInput);
+        if (parsed.inputMode !== undefined) setInputMode(parsed.inputMode);
+        if (parsed.contentType !== undefined) setContentType(parsed.contentType);
+        if (parsed.selectedStyle !== undefined) setSelectedStyle(parsed.selectedStyle);
+        if (parsed.selectedLanguage !== undefined) setSelectedLanguage(parsed.selectedLanguage);
+        if (parsed.selectedRatio !== undefined) setSelectedRatio(parsed.selectedRatio);
+        if (parsed.customStyle !== undefined) setCustomStyle(parsed.customStyle);
+      } catch (e) { console.error("Failed to load draft", e); }
+    }
+  }, []);
 
-  const acceptSuggestion = () => {
-      if (suggestedPrompt) {
-          setCustomStyle(suggestedPrompt);
-          setSuggestedPrompt(null);
-      }
-  };
+  // Save Draft on Change
+  useEffect(() => {
+    const draft = {
+      urlInput,
+      textInput,
+      inputMode,
+      contentType,
+      selectedStyle,
+      selectedLanguage,
+      selectedRatio,
+      customStyle
+    };
+    localStorage.setItem('l2i_article_draft', JSON.stringify(draft));
+  }, [urlInput, textInput, inputMode, contentType, selectedStyle, selectedLanguage, selectedRatio, customStyle]);
 
-  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          if (!file.type.startsWith('image/')) {
-              setError("Please upload a valid image file (JPG/PNG).");
-              return;
-          }
-          // Max size check (e.g., 4MB)
-          if (file.size > 4 * 1024 * 1024) {
-              setError("Image is too large. Please use an image under 4MB.");
-              return;
-          }
-
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              const base64 = reader.result as string;
-              const base64Data = base64.split(',')[1];
-              setReferenceImage({
-                  data: base64Data,
-                  mimeType: file.type
-              });
-              setError(null);
-          };
-          reader.readAsDataURL(file);
-      }
+  const handleError = (err: any) => {
+    console.error(err);
+    const errorMessage = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+    
+    if (errorMessage.includes("Requested entity was not found") || 
+        errorMessage.includes("403") || 
+        errorMessage.includes("PERMISSION_DENIED") ||
+        errorMessage.includes("permission")) {
+        
+        setError("Access Denied: Your API key requires a paid Google Cloud project with billing enabled to use Gemini 3.");
+        onShowKeyModal();
+    } else if (errorMessage.includes("safety")) {
+        setError("The content was flagged by safety filters. Please try different content.");
+    } else {
+        setError('An unexpected error occurred. Please check the content and try again.');
+    }
   };
 
   const handlePaste = async () => {
@@ -152,7 +183,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
           if (inputMode === 'url') setUrlInput(text);
           else setTextInput(text);
       } catch (err) {
-          console.error('Failed to read clipboard contents: ', err);
+          console.error('Clipboard failed:', err);
       }
   };
 
@@ -165,7 +196,6 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
     e.preventDefault();
     setError(null);
 
-    // Prompt for key if missing
     if (!hasApiKey) {
         onShowKeyModal();
         return;
@@ -177,17 +207,8 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
     const content = inputMode === 'url' ? urlInput.trim() : textInput.trim();
 
     if (!content) {
-      setError(inputMode === 'url' ? 'Please enter a valid URL.' : 'Please enter the text content.');
+      setError(inputMode === 'url' ? 'Please enter a valid URL.' : 'Please enter the content text.');
       return;
-    }
-
-    if (inputMode === 'url') {
-        try {
-            new URL(content);
-        } catch {
-            setError('Please enter a valid URL (including http:// or https://).');
-            return;
-        }
     }
 
     setLoading(true);
@@ -198,8 +219,8 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
     setMetadata(prev => ({
         ...prev,
         title: `${title} Infographic`,
-        description: `Infographic generated from ${inputMode === 'url' ? content : 'text content'}`,
-        keywords: `infographic, ${contentType}, ${title}`,
+        description: `Infographic generated from source`,
+        keywords: `infographic, ${contentType}`,
         date: new Date().toISOString().slice(0, 16)
     }));
 
@@ -214,7 +235,8 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
           (stage) => setLoadingStage(stage),
           selectedLanguage,
           referenceImage,
-          selectedRatio
+          selectedRatio,
+          model
       );
 
       if (result.imageData) {
@@ -224,48 +246,52 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
         onAddToHistory({
             id: Date.now().toString(),
             title: title,
-            url: inputMode === 'url' ? content : 'Text Input',
+            url: inputMode === 'url' ? content : 'Manual Text',
             imageData: result.imageData,
             citations: result.citations,
             date: new Date()
         });
       } else {
-        throw new Error('Failed to generate image.');
+        throw new Error('Image generation failed.');
       }
     } catch (err: any) {
-        console.error(err);
-        const errorMessage = err.message || '';
-        if (errorMessage.includes("Requested entity was not found") || errorMessage.includes("403")) {
-            setError("Access Denied: The API key is missing required permissions or billing. Please switch to a paid API Key.");
-        } else if (errorMessage.includes("safety")) {
-            setError("The content was flagged by safety filters. Please try different content.");
-        } else {
-            setError('An unexpected error occurred. Please check the URL/Text and try again.');
-        }
+        handleError(err);
     } finally {
       setLoading(false);
       setLoadingStage('');
     }
   };
 
-  const loadFromHistory = (item: ArticleHistoryItem) => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setInfographicData(item.imageData);
-      setCitations(item.citations);
-      setUrlInput(item.url.startsWith('http') ? item.url : '');
-      setTextInput(!item.url.startsWith('http') ? 'Loaded from history' : '');
-      
-      setMetadata(prev => ({
-          ...prev,
-          title: item.title,
-          description: `History item: ${item.title}`,
-          date: item.date.toISOString().slice(0, 16)
-      }));
+  const handleDownload = () => {
+    if (!infographicData) return;
+    const safeTitle = (metadata.title || 'infographic').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const filename = `${safeTitle}_with_meta.png`;
+    downloadWithMetadata(infographicData, metadata, filename);
+  };
+
+  const handleSimpleDownload = () => {
+    if (!infographicData) return;
+    const safeTitle = (metadata.title || 'infographic').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const link = document.createElement('a');
+    link.href = `data:image/png;base64,${infographicData}`;
+    link.download = `${safeTitle}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleLoadFromHistory = (item: ArticleHistoryItem) => {
+    setInfographicData(item.imageData);
+    setCitations(item.citations);
+    setMetadata(prev => ({
+      ...prev,
+      title: item.title,
+      date: new Date(item.date).toISOString().slice(0, 16)
+    }));
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 mb-20 px-4">
-      
+    <div className="max-w-7xl mx-auto space-y-12 mb-20 px-4 animate-in fade-in slide-in-from-bottom-6 duration-700">
       {fullScreenImage && (
           <ImageViewer 
             src={fullScreenImage.src} 
@@ -274,473 +300,309 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
           />
       )}
 
-      {/* Hero Section */}
+      {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white font-sans leading-tight">
-          Web <span className="text-emerald-500 dark:text-emerald-400">Visualizer</span>.
-        </h2>
-        <p className="text-slate-600 dark:text-slate-100 text-lg font-light tracking-wide">
-          Turn long articles or product pages into clear, visual summaries.
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em] mb-2 animate-pulse">
+            Semantic Visualizer v2.4
+        </div>
+        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          SiteSketch <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">Intelligence</span>
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 text-lg font-light leading-relaxed">
+          Transform URLs or long text into <strong className="text-emerald-500">Professional Infographics</strong> via AI.
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-8 items-start relative z-10">
-        
-        {/* Input Column (2 cols) */}
-        <div className="lg:col-span-2 space-y-6">
-            <form onSubmit={handleGenerate} className="glass-panel rounded-3xl p-5 space-y-6 bg-white/60 dark:bg-slate-900/60 sticky top-24">
-                
-                {/* Input Mode Toggle */}
-                <div className="flex p-1 bg-slate-100 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-white/10">
+      <div className="grid lg:grid-cols-12 gap-10 items-stretch">
+        {/* Left: Input Panel */}
+        <div className="lg:col-span-5 flex flex-col space-y-8">
+            <div className="glass-panel p-8 rounded-[40px] bg-white/60 dark:bg-slate-900/60 shadow-xl border border-slate-200 dark:border-white/10 space-y-8">
+                {/* Input Method */}
+                <div className="flex p-1 bg-slate-100 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-white/5">
                     <button
-                        type="button"
                         onClick={() => setInputMode('url')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'url' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${inputMode === 'url' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                     >
-                        <Link className="w-4 h-4" /> URL Link
+                        <Globe className="w-4 h-4" /> Scan Link
                     </button>
                     <button
-                        type="button"
                         onClick={() => setInputMode('text')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold font-mono transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                     >
-                        <AlignLeft className="w-4 h-4" /> Raw Text
+                        <AlignLeft className="w-4 h-4" /> Paste Text
                     </button>
                 </div>
 
-                {/* Content Type Toggle */}
-                <div className="space-y-2">
-                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold">What are we analyzing?</label>
-                    <div className="grid grid-cols-2 gap-3">
+                {/* Infographic Type */}
+                <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Infographic Type</label>
+                    <div className="grid grid-cols-2 gap-4">
                         <button
-                            type="button"
                             onClick={() => setContentType('article')}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'article' ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${contentType === 'article' ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-500 hover:border-emerald-500/30'}`}
                         >
                             <FileIcon className="w-5 h-5" />
-                            <span className="text-xs font-bold text-slate-700 dark:text-white">Article / Blog</span>
+                            <span className="text-[11px] font-bold uppercase">Article / Blog</span>
                         </button>
-                         <button
-                            type="button"
+                        <button
                             onClick={() => setContentType('product')}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${contentType === 'product' ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-500/50 text-blue-700 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${contentType === 'product' ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-500 hover:border-emerald-500/30'}`}
                         >
                             <ShoppingBag className="w-5 h-5" />
-                            <span className="text-xs font-bold text-slate-700 dark:text-white">Product Page</span>
+                            <span className="text-[11px] font-bold uppercase">Product Page</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Main Input */}
-                <div className="space-y-2">
-                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold">Source Content</label>
-                    {inputMode === 'url' ? (
-                        <div className={`relative group transition-all duration-300 ${activeInputFocus ? 'scale-[1.01]' : ''}`}>
-                            <div className={`absolute inset-0 bg-emerald-500/20 blur-xl rounded-xl transition-opacity duration-300 ${activeInputFocus ? 'opacity-100' : 'opacity-0'}`}></div>
-                            <div className="relative bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden flex items-center shadow-sm">
-                                <div className="pl-4 text-slate-400 dark:text-slate-200">
-                                    <Globe className={`w-5 h-5 transition-colors ${activeInputFocus ? 'text-emerald-500' : ''}`} />
-                                </div>
-                                <input
-                                    type="url"
-                                    value={urlInput}
-                                    onChange={(e) => setUrlInput(e.target.value)}
-                                    onFocus={() => setActiveInputFocus(true)}
-                                    onBlur={() => setActiveInputFocus(false)}
-                                    placeholder="https://example.com/article"
-                                    list="url-suggestions"
-                                    className="w-full bg-transparent border-none py-4 pl-3 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 font-mono text-sm"
-                                />
-                                
-                                <div className="absolute right-2 flex items-center gap-1">
-                                    {urlInput && (
-                                        <button 
-                                            type="button"
-                                            onClick={clearInput}
-                                            className="p-1.5 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                                            title="Clear"
-                                        >
-                                            <XCircle className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                    {!urlInput && (
-                                        <button
-                                            type="button"
-                                            onClick={handlePaste}
-                                            className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                                            title="Paste from clipboard"
-                                        >
-                                            <Clipboard className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <datalist id="url-suggestions">
-                                <option value="https://techcrunch.com/" />
-                                <option value="https://en.wikipedia.org/wiki/Artificial_intelligence" />
-                                <option value="https://github.com/features" />
-                                <option value="https://www.apple.com/iphone/" />
-                                <option value="https://www.tesla.com/cybertruck" />
-                            </datalist>
-                        </div>
-                    ) : (
-                        <div className={`relative group transition-all duration-300 ${activeInputFocus ? 'scale-[1.01]' : ''}`}>
-                            <div className={`absolute inset-0 bg-emerald-500/20 blur-xl rounded-xl transition-opacity duration-300 ${activeInputFocus ? 'opacity-100' : 'opacity-0'}`}></div>
-                            <div className="relative bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm flex flex-col">
-                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">Content Editor</span>
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            type="button"
-                                            onClick={handlePaste}
-                                            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-300 hover:text-emerald-500 transition-colors px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
-                                        >
-                                            <Clipboard className="w-3 h-3" /> Paste
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={clearInput}
-                                            className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-300 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
-                                        >
-                                            <Eraser className="w-3 h-3" /> Clear
-                                        </button>
+                {/* Content Source */}
+                <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Content Source</label>
+                    <div className={`relative group transition-all duration-300 ${activeInputFocus ? 'scale-[1.01]' : ''}`}>
+                        <div className={`absolute inset-0 bg-emerald-500/20 blur-xl rounded-2xl transition-opacity duration-300 ${activeInputFocus ? 'opacity-100' : 'opacity-0'}`}></div>
+                        <div className="relative bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col shadow-inner">
+                            {inputMode === 'url' ? (
+                                <div className="flex items-center p-4">
+                                    <Globe className={`w-5 h-5 mr-3 transition-colors ${activeInputFocus ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                    <input
+                                        type="url"
+                                        value={urlInput}
+                                        onChange={(e) => setUrlInput(e.target.value)}
+                                        onFocus={() => setActiveInputFocus(true)}
+                                        onBlur={() => setActiveInputFocus(false)}
+                                        placeholder="Enter website URL..."
+                                        className="flex-1 bg-transparent border-none py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 focus:ring-0 outline-none"
+                                    />
+                                    <div className="flex items-center gap-1">
+                                        {urlInput && <button onClick={clearInput} className="p-2 text-slate-400 hover:text-red-500"><XCircle className="w-4 h-4" /></button>}
+                                        {!urlInput && <button onClick={handlePaste} className="p-2 text-slate-400 hover:text-emerald-500"><Clipboard className="w-4 h-4" /></button>}
                                     </div>
                                 </div>
+                            ) : (
                                 <textarea
                                     value={textInput}
                                     onChange={(e) => setTextInput(e.target.value)}
                                     onFocus={() => setActiveInputFocus(true)}
                                     onBlur={() => setActiveInputFocus(false)}
-                                    placeholder="Paste article text or product description here..."
-                                    rows={8}
-                                    className="w-full bg-transparent border-none p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 font-mono text-sm resize-none leading-relaxed"
+                                    placeholder={contentType === 'article' ? "Paste article or blog content here..." : "Paste product description or technical specs..."}
+                                    rows={6}
+                                    className="w-full bg-transparent border-none p-5 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 focus:ring-0 outline-none resize-none"
                                 />
-                                <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-white/5 text-right">
-                                    <span className={`text-[10px] font-mono ${textInput.length > 5000 ? 'text-red-500' : 'text-slate-400 dark:text-slate-300'}`}>
-                                        {textInput.length} chars
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Reference Image Upload */}
-                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
-                     <div className="flex items-center justify-between">
-                        <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold flex items-center gap-1.5">
-                            <ScanEye className="w-4 h-4" /> Style Extractor (CSS Only)
-                        </label>
-                        {referenceImage && (
-                            <button 
-                                type="button" 
-                                onClick={() => { setReferenceImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                            >
-                                <Trash2 className="w-3 h-3" /> Remove
-                            </button>
-                        )}
-                     </div>
-                     
-                     <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 relative overflow-hidden group ${referenceImage ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-300 dark:border-white/10 text-slate-400'}`}
-                     >
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleReferenceUpload} 
-                            accept="image/png, image/jpeg" 
-                            className="hidden" 
-                        />
-                        
-                        {referenceImage ? (
-                            <div className="relative w-full h-32">
-                                <img src={`data:${referenceImage.mimeType};base64,${referenceImage.data}`} alt="Reference" className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-40 transition-opacity" />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">Image Loaded</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="py-4 space-y-2">
-                                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <Upload className="w-5 h-5 text-slate-400 group-hover:text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-600 dark:text-white">Upload Reference Screenshot</p>
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-1 max-w-[200px] mx-auto">
-                                        AI will match colors & fonts. <span className="text-red-400">Logos and UI elements are ignored.</span>
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                     </div>
-                </div>
-                
-                {/* PRO TIPS SECTION */}
-                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Lightbulb className="w-4 h-4 text-emerald-500" />
-                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase">Pro Tips</span>
-                    </div>
-                    <ul className="text-[11px] text-slate-600 dark:text-slate-200 space-y-1 list-disc list-inside">
-                        <li><strong>For Style Extractor:</strong> Use a screenshot of a website brand kit or landing page.</li>
-                        <li><strong>For Products:</strong> Ensure the URL is the specific product detail page, not the category page.</li>
-                        <li><strong>For Blogs:</strong> Long-form content (1000+ words) produces the best bullet-point summaries.</li>
-                    </ul>
-                </div>
-
-                {/* Design Controls */}
-                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-white/10">
-                    <label className="text-sm text-slate-500 dark:text-white font-mono ml-1 font-bold flex items-center gap-2">
-                        <Palette className="w-4 h-4" /> Design Configuration
-                    </label>
-
-                    {/* Language & Ratio Row */}
-                    <div className="grid grid-cols-2 gap-3">
-                         <div className="space-y-1.5">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-300 uppercase tracking-wider font-bold ml-1">Language</span>
-                            <div className="relative">
-                                <select
-                                    value={selectedLanguage}
-                                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-white focus:ring-1 focus:ring-emerald-500/50"
-                                >
-                                    {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <span className="text-[10px] text-slate-400 dark:text-slate-300 uppercase tracking-wider font-bold ml-1">Aspect Ratio</span>
-                            <div className="relative">
-                                <select
-                                    value={selectedRatio}
-                                    onChange={(e) => setSelectedRatio(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-lg py-2 pl-3 pr-8 text-xs font-mono text-slate-700 dark:text-white focus:ring-1 focus:ring-emerald-500/50"
-                                >
-                                    {ASPECT_RATIOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                </select>
-                            </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {SKETCH_STYLES.map((style) => (
-                            <button
-                                key={style}
-                                type="button"
-                                onClick={() => setSelectedStyle(style)}
-                                className={`px-2 py-2 rounded-lg text-xs font-mono text-center transition-all border ${
-                                    selectedStyle === style
-                                        ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
-                                        : 'bg-slate-50 dark:bg-slate-800/30 border-transparent text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-white/10'
-                                }`}
-                            >
-                                {style}
-                            </button>
-                        ))}
+                {/* Visual Style & Config */}
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Visual Theme</label>
+                        <select
+                            value={selectedStyle}
+                            onChange={(e) => setSelectedStyle(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl py-3 px-3 text-[11px] font-bold text-slate-700 dark:text-white outline-none focus:ring-1 ring-emerald-500"
+                        >
+                            {SKETCH_STYLES.map(style => <option key={style} value={style}>{style}</option>)}
+                        </select>
                     </div>
 
                     {selectedStyle === 'Custom' && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={customStyle}
-                                    onChange={(e) => setCustomStyle(e.target.value)}
-                                    placeholder="Describe custom style..."
-                                    className="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-32 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono text-sm transition-all"
-                                />
-                                <div className="absolute right-1.5 top-1.5 bottom-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={handleImprovePrompt}
-                                        disabled={improvingPrompt || !customStyle.trim()}
-                                        className="h-full px-3 bg-emerald-100 dark:bg-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {improvingPrompt ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                            <Wand2 className="w-3 h-3" />
-                                        )}
-                                        AI Enhance
-                                    </button>
-                                </div>
-                            </div>
-
-                            {suggestedPrompt && (
-                                <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-3 flex items-start justify-between gap-3">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Suggestion</p>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 italic">{suggestedPrompt}</p>
-                                    </div>
-                                    <div className="flex flex-col gap-1 shrink-0">
-                                        <button 
-                                            type="button"
-                                            onClick={acceptSuggestion}
-                                            className="p-1.5 bg-emerald-100 dark:bg-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/40 text-emerald-700 dark:text-emerald-200 rounded transition-colors"
-                                        >
-                                            <Check className="w-3 h-3" />
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => setSuggestedPrompt(null)}
-                                            className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 rounded transition-colors"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Custom Style Description</label>
+                            <input
+                                type="text"
+                                value={customStyle}
+                                onChange={(e) => setCustomStyle(e.target.value)}
+                                placeholder="E.g. Vintage newspaper, 8-bit pixel art..."
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-xs text-slate-700 dark:text-white outline-none focus:ring-1 ring-emerald-500"
+                            />
                         </div>
                     )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Language</label>
+                            <select
+                                value={selectedLanguage}
+                                onChange={(e) => setSelectedLanguage(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl py-3 px-3 text-[11px] font-bold text-slate-700 dark:text-white outline-none focus:ring-1 ring-emerald-500"
+                            >
+                                {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Format</label>
+                            <select
+                                value={selectedRatio}
+                                onChange={(e) => setSelectedRatio(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl py-3 px-3 text-[11px] font-bold text-slate-700 dark:text-white outline-none focus:ring-1 ring-emerald-500"
+                            >
+                                {ASPECT_RATIOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <button
-                    type="submit"
+                    onClick={handleGenerate}
                     disabled={loading}
-                    className="w-full py-4 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed group border border-transparent dark:border-white/10"
+                    className="w-full py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-xl disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.98] group"
                 >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5 text-emerald-400 dark:text-emerald-600 group-hover:rotate-12 transition-transform" /> GENERATE INFOGRAPHIC</>}
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>GENERATE INFOGRAPHIC <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
                 </button>
-            </form>
-
-            {error && (
-                <div className="p-4 glass-panel border-red-500/30 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 animate-in fade-in slide-in-from-top-2 font-mono text-sm bg-red-50/50 dark:bg-transparent shadow-lg">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 whitespace-pre-line leading-relaxed">{error}</div>
-                    {error.includes("Access Denied") && (
-                        <button 
-                            onClick={onShowKeyModal}
-                            className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-xs font-bold transition-colors flex items-center gap-1 whitespace-nowrap"
-                        >
-                            <KeyRound className="w-3 h-3" /> SWITCH KEY
-                        </button>
-                    )}
-                </div>
-            )}
+            </div>
         </div>
 
-        {/* Output Column (3 cols) */}
-        <div className="lg:col-span-3 min-h-[500px] flex flex-col">
+        {/* Right: Output Pane */}
+        <div className="lg:col-span-7 flex flex-col min-h-[600px]">
             {loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-3xl">
+                <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-[40px] bg-white/40 dark:bg-slate-900/40 border-2 border-dashed border-emerald-500/20">
                      <LoadingState message={loadingStage} type="article" />
                 </div>
             ) : infographicData ? (
-                <div className="flex-1 glass-panel rounded-3xl p-6 bg-white/60 dark:bg-slate-900/60 animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-6">
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
-                         <div className="flex items-center gap-2">
-                             <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg text-emerald-600 dark:text-emerald-400">
-                                 <ImageIcon className="w-5 h-5" />
-                             </div>
-                             <div>
-                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white font-sans">Generated Infographic</h3>
-                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                                     {new Date().toLocaleTimeString()} • {selectedRatio}
-                                 </p>
-                             </div>
-                         </div>
-                         <div className="flex items-center gap-2">
+                <div className="flex-1 glass-panel p-8 rounded-[40px] flex flex-col bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95">
+                    <div className="flex items-center justify-between mb-8 border-b border-slate-100 dark:border-white/5 pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                                <Cpu className="w-5 h-5 text-emerald-500" />
+                            </div>
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-white">Sketch_Export</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
                              <button 
-                                onClick={() => setFullScreenImage({src: `data:image/png;base64,${infographicData}`, alt: "Result"})}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 transition-colors"
-                                title="Fullscreen"
-                             >
-                                 <Maximize className="w-5 h-5" />
-                             </button>
-                             <a 
-                                href={`data:image/png;base64,${infographicData}`} 
-                                download="infographic.png"
-                                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-emerald-500/20"
-                             >
-                                 <Download className="w-4 h-4" /> Download
-                             </a>
-                         </div>
+                                onClick={() => setFullScreenImage({ src: `data:image/png;base64,${infographicData}`, alt: "SiteSketch Result" })} 
+                                className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-500"
+                                title="View Fullscreen"
+                            >
+                                <Eye className="w-5 h-5" />
+                            </button>
+                             <button 
+                                onClick={handleSimpleDownload}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs font-bold border border-slate-200 dark:border-white/5 shadow-sm"
+                                title="Download simple PNG"
+                            >
+                                <FileImage className="w-4 h-4" /> Download PNG
+                            </button>
+                             <button 
+                                onClick={handleDownload}
+                                className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:bg-emerald-600 transition-colors"
+                                title="Download with Metadata"
+                            >
+                                <Download className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => setInfographicData(null)} className="p-3 hover:bg-red-500/10 text-red-500 rounded-xl transition-colors" title="Clear Result"><Trash2 className="w-5 h-5" /></button>
+                        </div>
                     </div>
 
-                    <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-white/10 group bg-slate-100 dark:bg-slate-950">
+                    <div className="relative group cursor-zoom-in rounded-3xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/40 mb-8 shadow-inner">
                         <img 
                             src={`data:image/png;base64,${infographicData}`} 
                             alt="Generated Infographic" 
-                            className="w-full h-auto object-contain"
+                            className="w-full h-auto object-contain transition-transform group-hover:scale-105 duration-1000" 
+                            onClick={() => setFullScreenImage({ src: `data:image/png;base64,${infographicData}`, alt: "Result" })}
                         />
                     </div>
 
                     {citations.length > 0 && (
-                        <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-white/5">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono mb-3 flex items-center gap-2">
-                                <BookOpen className="w-4 h-4" /> Sources & Citations
-                            </h4>
-                            <div className="grid gap-2">
+                        <div className="bg-emerald-500/5 rounded-3xl p-6 border border-emerald-500/10">
+                            <h4 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Grounding Sources</h4>
+                            <div className="grid gap-3">
                                 {citations.map((c, i) => (
-                                    <a key={i} href={c.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors truncate">
-                                        <ExternalLink className="w-3 h-3 shrink-0" />
-                                        <span className="truncate">{c.title || c.uri}</span>
+                                    <a key={i} href={c.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 hover:text-emerald-500 transition-colors group">
+                                        <ExternalLink className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                                        <span className="truncate underline underline-offset-4">{c.title || c.uri}</span>
                                     </a>
                                 ))}
                             </div>
                         </div>
                     )}
-                    
-                    {/* Metadata Editor Integration */}
-                    <MetadataEditor initialData={metadata} onChange={setMetadata} />
+                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5">
+                        <MetadataEditor initialData={metadata} onChange={setMetadata} />
+                    </div>
                 </div>
             ) : (
-                // EMPTY STATE GUIDE
-                <div className="flex-1 glass-panel rounded-3xl flex flex-col items-center justify-center p-8 text-center border-dashed border-2 border-slate-300 dark:border-white/10 bg-white/40 dark:bg-slate-900/40">
-                    <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                        <FileIcon className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-700 dark:text-white mb-2 font-sans">Content Strategy Guide</h3>
-                    <p className="text-slate-500 dark:text-slate-200 max-w-sm leading-relaxed mb-8 text-sm">
-                        Choose your input type to determine the output format.
-                    </p>
+                <div className="flex-1 glass-panel border-2 border-dashed border-slate-300 dark:border-white/10 rounded-[40px] flex flex-col p-8 md:p-12 bg-white/40 dark:bg-slate-900/40 relative overflow-hidden">
+                    <div className="relative z-10 h-full flex flex-col">
+                        <div className="text-center space-y-3 mb-12">
+                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto border border-slate-200 dark:border-white/10">
+                                <HelpCircle className="w-8 h-8 text-slate-400" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white font-sans">SiteSketch Guide</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">The AI visualization engine for editorial and technical content.</p>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full text-left">
-                        <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/5">
-                            <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Articles -> Summaries</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-300">
-                                Perfect for creating LinkedIn carousels or educational posts from long reads.
-                            </p>
-                        </div>
-                        <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/5">
-                            <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">Products -> Spec Sheets</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-300">
-                                Perfect for e-commerce visual merchandising and feature comparison.
-                            </p>
+                        <div className="grid gap-6 flex-1">
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-emerald-500/10 rounded-2xl overflow-hidden border border-emerald-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <Zap className="w-10 h-10 text-emerald-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">EDITORIAL MODE</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed italic">"Transform blog posts into social-ready infographics with key takeaways."</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-blue-500/10 rounded-2xl overflow-hidden border border-blue-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <ShoppingBag className="w-10 h-10 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">PRODUCT SPECS</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">"Convert product pages into visual tech sheets and comparison grids."</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-teal-500/10 rounded-2xl overflow-hidden border border-teal-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <FileIcon className="w-10 h-10 text-teal-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">TECH DOCUMENTS</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url > visual mapping of technical documentation and developer guides...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <div className="absolute inset-0 -z-10 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #10b981 2px, transparent 2px)', backgroundSize: '32px 32px' }}></div>
                 </div>
             )}
         </div>
       </div>
 
-      {/* History Grid */}
       {history.length > 0 && (
           <div className="pt-12 border-t border-slate-200 dark:border-white/10 animate-in fade-in">
-              <div className="flex items-center gap-2 mb-6 text-slate-500 dark:text-slate-300">
-                  <Clock className="w-4 h-4" />
-                  <h3 className="text-sm font-mono uppercase tracking-wider font-bold">Recent Sketches</h3>
+              <div className="flex items-center gap-2 mb-8 text-slate-400">
+                  <History className="w-4 h-4" />
+                  <h2 className="text-sm font-bold uppercase tracking-widest">SiteSketch Archive</h2>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                   {history.map((item) => (
                       <button 
                         key={item.id}
-                        onClick={() => loadFromHistory(item)}
-                        className="group bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 rounded-xl overflow-hidden text-left transition-all hover:shadow-lg dark:hover:shadow-neon-emerald hover:bg-slate-50 dark:hover:bg-slate-800"
+                        onClick={() => handleLoadFromHistory(item)}
+                        className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-emerald-500/50 rounded-[32px] overflow-hidden text-left transition-all hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 p-2"
                       >
-                          <div className="aspect-[3/4] relative overflow-hidden bg-slate-100 dark:bg-slate-950">
-                              <img src={`data:image/png;base64,${item.imageData}`} alt={item.title} className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity" />
+                          <div className="aspect-[3/4] relative overflow-hidden rounded-[24px] bg-slate-100 dark:bg-black/40">
+                              <img src={`data:image/png;base64,${item.imageData}`} alt={item.title} className="w-full h-full object-cover opacity-90 transition-opacity group-hover:scale-110 duration-700" />
                           </div>
-                          <div className="p-3">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">{item.title}</p>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-300 mt-1 font-medium truncate">{new Date(item.date).toLocaleDateString()}</p>
+                          <div className="p-4">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate uppercase tracking-tighter">{item.title}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-mono truncate">{item.url}</p>
                           </div>
                       </button>
                   ))}
               </div>
           </div>
+      )}
+
+      {error && (
+        <div className="p-5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-3xl flex items-center gap-4 text-sm border border-red-500/20 animate-in slide-in-from-top-4">
+            <AlertCircle className="w-6 h-6 shrink-0" />
+            <div className="flex-1 font-medium leading-relaxed">{error}</div>
+            <button onClick={() => setError(null)} className="p-2 hover:bg-black/5 rounded-full"><X className="w-5 h-5" /></button>
+        </div>
       )}
     </div>
   );

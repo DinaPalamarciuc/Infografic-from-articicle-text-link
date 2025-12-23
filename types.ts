@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -8,7 +9,17 @@ import { SimulationNodeDatum, SimulationLinkDatum } from 'd3';
 export enum ViewMode {
   HOME = 'HOME',
   REPO_ANALYZER = 'REPO_ANALYZER',
-  ARTICLE_INFOGRAPHIC = 'ARTICLE_INFOGRAPHIC'
+  ARTICLE_INFOGRAPHIC = 'ARTICLE_INFOGRAPHIC',
+  VISION_STUDIO = 'VISION_STUDIO',
+  ACADEMIC_STUDIO = 'ACADEMIC_STUDIO'
+}
+
+export type GeminiModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+
+export interface ModelConfig {
+  strategy: GeminiModel;
+  drafting: GeminiModel;
+  code: GeminiModel;
 }
 
 export interface D3Node extends SimulationNodeDatum {
@@ -72,6 +83,14 @@ export interface ArticleHistoryItem {
     url: string;
     imageData: string;
     citations: Citation[];
+    date: Date;
+}
+
+export interface AcademicHistoryItem {
+    id: string;
+    topic: string;
+    subject: string;
+    imageData: string;
     date: Date;
 }
 

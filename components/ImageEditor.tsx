@@ -84,9 +84,9 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
   return (
     <div className="max-w-6xl mx-auto">
       <div className="text-center max-w-3xl mx-auto space-y-6 mb-12">
-        <h2 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-fuchsia-300 via-pink-300 to-slate-500 font-sans">
+        <h1 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-fuchsia-300 via-pink-300 to-slate-500 font-sans">
           Reality <span className="text-pink-500">Engine</span>.
-        </h2>
+        </h1>
         <p className="text-slate-400 text-lg font-light tracking-wide">
           Apply custom styles and manipulate architectural visualizations.
         </p>

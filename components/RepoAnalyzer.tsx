@@ -1,13 +1,43 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { fetchRepoFileTree } from '../services/githubService';
 import { generateInfographic, improvePrompt } from '../services/geminiService';
-import { RepoFileTree, ViewMode, RepoHistoryItem, ImageMetadata } from '../types';
-import { ShieldAlert, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Wand2, Check, X, RectangleHorizontal, RectangleVertical, Square, HelpCircle, Code } from 'lucide-react';
+import { downloadWithMetadata } from '../services/imageService';
+import { RepoFileTree, ViewMode, RepoHistoryItem, ImageMetadata, GeminiModel } from '../types';
+import { 
+  ShieldAlert, 
+  Loader2, 
+  Layers, 
+  Box, 
+  Download, 
+  Sparkles, 
+  Command, 
+  Palette, 
+  Globe, 
+  Clock, 
+  Maximize, 
+  KeyRound, 
+  Wand2, 
+  Check, 
+  X, 
+  RectangleHorizontal, 
+  RectangleVertical, 
+  Square, 
+  HelpCircle, 
+  Code,
+  ArrowRight,
+  GitBranch,
+  Cpu,
+  Zap,
+  MousePointer2,
+  Eye,
+  History
+} from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import MetadataEditor from './MetadataEditor';
@@ -18,6 +48,7 @@ interface RepoAnalyzerProps {
   onAddToHistory: (item: RepoHistoryItem) => void;
   hasApiKey: boolean;
   onShowKeyModal: () => void;
+  model: GeminiModel;
 }
 
 const FLOW_STYLES = [
@@ -53,7 +84,7 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddToHistory, hasApiKey, onShowKeyModal }) => {
+const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddToHistory, hasApiKey, onShowKeyModal, model }) => {
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -63,18 +94,13 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
   const [error, setError] = useState<string | null>(null);
   const [loadingStage, setLoadingStage] = useState<string>('');
   
-  // Prompt Enhancer State
-  const [improvingPrompt, setImprovingPrompt] = useState(false);
-  const [suggestedPrompt, setSuggestedPrompt] = useState<string | null>(null);
-
-  // Infographic State
   const [infographicData, setInfographicData] = useState<string | null>(null);
   const [infographic3DData, setInfographic3DData] = useState<string | null>(null);
   const [generating3D, setGenerating3D] = useState(false);
   const [currentFileTree, setCurrentFileTree] = useState<RepoFileTree[] | null>(null);
   const [currentRepoName, setCurrentRepoName] = useState<string>('');
+  const [show3DMode, setShow3DMode] = useState(false);
   
-  // Metadata State
   const [metadata, setMetadata] = useState<ImageMetadata>({
       title: '',
       author: 'Link2Infographic',
@@ -84,8 +110,34 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
       date: new Date().toISOString()
   });
   
-  // Viewer State
   const [fullScreenImage, setFullScreenImage] = useState<{src: string, alt: string} | null>(null);
+
+  // Load Draft on Mount
+  useEffect(() => {
+    const draft = localStorage.getItem('l2i_repo_draft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.repoInput !== undefined) setRepoInput(parsed.repoInput);
+        if (parsed.selectedStyle !== undefined) setSelectedStyle(parsed.selectedStyle);
+        if (parsed.selectedLanguage !== undefined) setSelectedLanguage(parsed.selectedLanguage);
+        if (parsed.selectedRatio !== undefined) setSelectedRatio(parsed.selectedRatio);
+        if (parsed.customStyle !== undefined) setCustomStyle(parsed.customStyle);
+      } catch (e) { console.error("Failed to load repo draft", e); }
+    }
+  }, []);
+
+  // Save Draft on Change
+  useEffect(() => {
+    const draft = {
+      repoInput,
+      selectedStyle,
+      selectedLanguage,
+      selectedRatio,
+      customStyle
+    };
+    localStorage.setItem('l2i_repo_draft', JSON.stringify(draft));
+  }, [repoInput, selectedStyle, selectedLanguage, selectedRatio, customStyle]);
 
   const parseRepoInput = (input: string): { owner: string, repo: string } | null => {
     const cleanInput = input.trim().replace(/\/$/, '');
@@ -113,70 +165,32 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
      onAddToHistory(newItem);
   };
 
-  const handleImprovePrompt = async () => {
-      if (!hasApiKey) {
-          onShowKeyModal();
-          return;
-      }
-      if (!customStyle.trim()) return;
-      setImprovingPrompt(true);
-      setSuggestedPrompt(null);
-      try {
-          const better = await improvePrompt(customStyle);
-          setSuggestedPrompt(better);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setImprovingPrompt(false);
-      }
-  };
-
-  const acceptSuggestion = () => {
-      if (suggestedPrompt) {
-          setCustomStyle(suggestedPrompt);
-          setSuggestedPrompt(null);
-      }
-  };
-
   const handleApiError = (err: any) => {
-      const errorMessage = err.message || '';
+      const errorMessage = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
       console.error("Analysis Error:", err);
 
-      if (errorMessage.includes("Requested entity was not found") || errorMessage.includes("403")) {
-          const confirmSwitch = window.confirm(
-              "BILLING REQUIRED: The current API key does not have access to these models.\n\n" +
-              "This feature requires a paid Google Cloud Project. Please switch to a valid paid API Key."
-          );
-          if (confirmSwitch) {
-              window.location.reload();
-          }
-          setError("Access Denied: The API key is missing required permissions or billing.");
+      if (errorMessage.includes("Requested entity was not found") || 
+          errorMessage.includes("403") || 
+          errorMessage.includes("PERMISSION_DENIED") ||
+          errorMessage.includes("permission")) {
+          
+          setError("Access Denied: The current API key lacks permissions or billing. You MUST select a key from a paid Google Cloud Project.");
+          onShowKeyModal();
           return;
       }
 
       if (errorMessage.toLowerCase().includes("rate limit")) {
-          setError("GitHub API Rate Limit Exceeded. We cannot fetch this repo right now. Please try again in ~60 minutes.");
+          setError("GitHub API Rate Limit Exceeded. Please try again in ~60 minutes.");
           return;
       }
 
-      if (errorMessage.includes("Failed to fetch repository")) {
-          setError("Could not access repository. Please check:\n• Is the repository Public?\n• Is the 'owner/repo' spelling correct?\n• Does it have a 'main' or 'master' branch?");
-          return;
-      }
-      
-      if (errorMessage.includes("No relevant code files")) {
-          setError("Repository appears empty or contains no supported code files (JS, TS, Python, etc.) to analyze.");
-          return;
-      }
-
-      setError(errorMessage || 'An unexpected error occurred during analysis. Please try again.');
+      setError(errorMessage || 'An unexpected error occurred. Please try again.');
   }
 
   const handleAnalyze = async (e?: React.FormEvent, overrideInput?: string) => {
     if (e) e.preventDefault();
     setError(null);
 
-    // Prompt for key if missing
     if (!hasApiKey) {
         onShowKeyModal();
         return;
@@ -185,16 +199,16 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
     setInfographicData(null);
     setInfographic3DData(null);
     setCurrentFileTree(null);
+    setShow3DMode(false);
 
     const inputToUse = overrideInput || repoInput;
     const repoDetails = parseRepoInput(inputToUse);
 
     if (!repoDetails) {
-      setError('Invalid format. Use "owner/repo" (e.g., facebook/react) or a full GitHub URL.');
+      setError('Invalid format. Use "owner/repo" or a full GitHub URL.');
       return;
     }
 
-    // Update state to reflect what we are analyzing if triggered by button
     if (overrideInput) setRepoInput(overrideInput);
 
     setLoading(true);
@@ -212,20 +226,20 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
       setLoadingStage('CONNECTING TO GITHUB');
       const fileTree = await fetchRepoFileTree(repoDetails.owner, repoDetails.repo);
 
-      if (fileTree.length === 0) throw new Error('No relevant code files found in this repository.');
+      if (fileTree.length === 0) throw new Error('No relevant code files found.');
       setCurrentFileTree(fileTree);
 
-      setLoadingStage('ANALYZING STRUCTURE & GENERATING');
+      setLoadingStage('ARCHITECTURAL SYNTHESIS');
       
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
 
-      const infographicBase64 = await generateInfographic(repoDetails.repo, fileTree, styleToUse, false, selectedLanguage, selectedRatio);
+      const infographicBase64 = await generateInfographic(repoDetails.repo, fileTree, styleToUse, false, selectedLanguage, selectedRatio, model);
       
       if (infographicBase64) {
         setInfographicData(infographicBase64);
         addToHistory(repoDetails.repo, infographicBase64, false, styleToUse);
       } else {
-          throw new Error("Failed to generate visual.");
+          throw new Error("Failed to generate blueprint.");
       }
 
     } catch (err: any) {
@@ -238,7 +252,6 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
 
   const handleGenerate3D = async () => {
     if (!currentFileTree || !currentRepoName) return;
-    
     if (!hasApiKey) {
         onShowKeyModal();
         return;
@@ -247,9 +260,10 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
     setGenerating3D(true);
     try {
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
-      const data = await generateInfographic(currentRepoName, currentFileTree, styleToUse, true, selectedLanguage, selectedRatio);
+      const data = await generateInfographic(currentRepoName, currentFileTree, styleToUse, true, selectedLanguage, selectedRatio, model);
       if (data) {
           setInfographic3DData(data);
+          setShow3DMode(true);
           addToHistory(currentRepoName, data, true, styleToUse);
       }
     } catch (err: any) {
@@ -259,28 +273,18 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
     }
   };
 
-  const loadFromHistory = (item: RepoHistoryItem) => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setCurrentRepoName(item.repoName);
-      setMetadata(prev => ({
-          ...prev,
-          title: item.repoName,
-          description: `History item: ${item.repoName} (${item.style})`,
-          date: item.date.toISOString().slice(0, 16)
-      }));
-
-      if (item.is3D) {
-          setInfographic3DData(item.imageData);
-          setInfographicData(null); 
-      } else {
-          setInfographicData(item.imageData);
-          setInfographic3DData(null); 
-      }
+  const handleDownload = () => {
+      const data = show3DMode ? infographic3DData : infographicData;
+      if (!data) return;
+      const safeTitle = (metadata.title || currentRepoName).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${safeTitle}.png`;
+      downloadWithMetadata(data, metadata, filename);
   };
 
+  const currentImg = show3DMode ? infographic3DData : infographicData;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-10 mb-20 px-4">
-      
+    <div className="max-w-7xl mx-auto space-y-12 mb-20 px-4 animate-in fade-in slide-in-from-bottom-6 duration-700">
       {fullScreenImage && (
           <ImageViewer 
             src={fullScreenImage.src} 
@@ -289,63 +293,62 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
           />
       )}
 
-      {/* Hero Section */}
+      {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white font-sans leading-tight">
-          Codebase <span className="text-violet-500 dark:text-violet-400">Intelligence</span>.
-        </h2>
-        <p className="text-slate-600 dark:text-slate-100 text-lg font-light tracking-wide">
-          Enter a GitHub repository to visualize its logical data flow.
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-[10px] font-bold text-violet-500 uppercase tracking-[0.2em] mb-2 animate-pulse">
+            Architectural Engine v3.1
+        </div>
+        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          GitFlow <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-400">Intelligence</span>
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 text-lg font-light leading-relaxed">
+          Map repository hierarchies and logic flows into high-fidelity <strong className="text-violet-500">Architectural Blueprints</strong>.
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-8 items-start relative z-10">
-        
-        {/* Input Column (4 cols) */}
-        <div className="lg:col-span-4 space-y-6">
-            <form onSubmit={(e) => handleAnalyze(e)} className="glass-panel rounded-2xl p-4 space-y-6 bg-white/60 dark:bg-slate-900/60 sticky top-24">
-                
-                {/* Input Field */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider ml-1">Repository URL</label>
-                    <div className="flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 shadow-sm focus-within:ring-2 ring-violet-500/50">
-                        <Command className="w-5 h-5 text-slate-400 mr-2" />
+      <div className="grid lg:grid-cols-12 gap-10 items-stretch">
+        {/* Left: Input Panel */}
+        <div className="lg:col-span-4 flex flex-col space-y-8">
+            <div className="glass-panel p-8 rounded-[40px] bg-white/60 dark:bg-slate-900/60 shadow-xl border border-slate-200 dark:border-white/10 space-y-8">
+                {/* Repo Input */}
+                <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Remote Repository</label>
+                    <div className="flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 shadow-inner focus-within:ring-2 ring-violet-500 transition-all">
+                        <Command className="w-5 h-5 text-slate-400 mr-3" />
                         <input
                             type="text"
                             value={repoInput}
                             onChange={(e) => setRepoInput(e.target.value)}
                             placeholder="owner/repo (e.g. facebook/react)"
-                            className="w-full bg-transparent border-none text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-0 font-mono text-sm"
+                            className="w-full bg-transparent border-none text-slate-900 dark:text-white placeholder:text-slate-500 focus:ring-0 font-mono text-sm outline-none"
                         />
                     </div>
                 </div>
 
-                {/* Quick Try Buttons */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
+                {/* Quick Samples */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 ml-1">
                          <Sparkles className="w-3 h-3 text-violet-500" />
-                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">Quick Start Examples</span>
+                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Benchmarking Hub</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                         <button type="button" onClick={() => handleAnalyze(undefined, "facebook/react")} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/30 text-slate-600 dark:text-slate-200 rounded border border-slate-200 dark:border-white/10 transition-colors font-mono">facebook/react</button>
-                         <button type="button" onClick={() => handleAnalyze(undefined, "vercel/next.js")} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/30 text-slate-600 dark:text-slate-200 rounded border border-slate-200 dark:border-white/10 transition-colors font-mono">vercel/next.js</button>
-                         <button type="button" onClick={() => handleAnalyze(undefined, "airbnb/javascript")} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/30 text-slate-600 dark:text-slate-200 rounded border border-slate-200 dark:border-white/10 transition-colors font-mono">airbnb/javascript</button>
+                         <button onClick={() => handleAnalyze(undefined, "facebook/react")} className="text-[10px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-violet-500/10 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/5 transition-all font-bold">facebook/react</button>
+                         <button onClick={() => handleAnalyze(undefined, "vercel/next.js")} className="text-[10px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-violet-500/10 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/5 transition-all font-bold">vercel/next.js</button>
                     </div>
                 </div>
 
-                {/* Style Selector */}
-                <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-white/10">
-                     <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider ml-1 flex items-center gap-1"><Palette className="w-3 h-3"/> Visualization Style</label>
-                     <div className="grid grid-cols-2 gap-2">
+                {/* Style Picker */}
+                <div className="space-y-3">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Visualization Engine</label>
+                     <div className="grid grid-cols-2 gap-3">
                          {FLOW_STYLES.map(style => (
                              <button
                                 key={style}
-                                type="button"
                                 onClick={() => setSelectedStyle(style)}
-                                className={`text-xs px-2 py-2 rounded-lg font-mono transition-all text-left truncate ${
+                                className={`text-[10px] px-3 py-3 rounded-xl font-bold transition-all text-left uppercase tracking-tighter border ${
                                     selectedStyle === style 
-                                    ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-200 border border-violet-200 dark:border-violet-500/30 shadow-sm font-bold' 
-                                    : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    ? 'bg-violet-500 border-violet-500 text-white shadow-lg' 
+                                    : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-500 hover:border-violet-500/30'
                                 }`}
                              >
                                  {style}
@@ -354,180 +357,188 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
                      </div>
                 </div>
 
-                 {/* Aspect Ratio */}
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider ml-1">Aspect Ratio</label>
-                    <div className="flex gap-2">
+                {/* Format Picker */}
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Aspect Ratio</label>
+                    <div className="flex gap-3">
                         {ASPECT_RATIOS.map(ratio => (
                             <button
                                 key={ratio.value}
-                                type="button"
                                 onClick={() => setSelectedRatio(ratio.value)}
-                                className={`flex-1 p-2 rounded-lg transition-all flex justify-center ${
+                                className={`flex-1 p-3 rounded-xl transition-all flex justify-center border ${
                                     selectedRatio === ratio.value
-                                    ? 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm ring-1 ring-violet-500/20'
-                                    : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                    ? 'bg-white dark:bg-slate-800 text-violet-500 border-violet-500/30 shadow-lg ring-1 ring-violet-500/10'
+                                    : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-white/5 text-slate-400'
                                 }`}
                                 title={ratio.label}
                             >
-                                <ratio.icon className="w-4 h-4" />
+                                <ratio.icon className="w-5 h-5" />
                             </button>
                         ))}
                     </div>
                  </div>
 
                  <button
-                    type="submit"
                     disabled={loading || !repoInput.trim()}
-                    className="w-full py-4 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed group"
+                    onClick={() => handleAnalyze()}
+                    className="w-full py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-xl disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.98] group"
                 >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Box className="w-5 h-5 group-hover:animate-bounce" /> GENERATE BLUEPRINT</>}
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>GENERATE BLUEPRINT <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
                 </button>
                 
                 {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-lg text-xs text-red-600 dark:text-red-400 font-mono leading-relaxed">
-                        <ShieldAlert className="w-4 h-4 mb-1 inline mr-1" />
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-500/20 rounded-2xl text-[11px] text-red-600 dark:text-red-400 font-mono leading-relaxed animate-in slide-in-from-top-2">
+                        <ShieldAlert className="w-4 h-4 mb-2" />
                         {error}
                     </div>
                 )}
-            </form>
+            </div>
         </div>
 
-        {/* Output Column (8 cols) */}
+        {/* Right: Output Pane */}
         <div className="lg:col-span-8 min-h-[600px] flex flex-col">
             {loading ? (
-                 <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-3xl">
+                 <div className="flex-1 flex flex-col items-center justify-center glass-panel rounded-[40px] bg-white/40 dark:bg-slate-900/40 border-2 border-dashed border-violet-500/20">
                      <LoadingState message={loadingStage} type="repo" />
                 </div>
-            ) : (infographicData || infographic3DData) ? (
-                 <div className="glass-panel rounded-3xl p-6 animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-6 bg-white/60 dark:bg-slate-900/60">
-                      {/* Results Header */}
-                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+            ) : currentImg ? (
+                 <div className="flex-1 glass-panel p-8 rounded-[40px] flex flex-col bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95">
+                      <div className="flex items-center justify-between mb-8 border-b border-slate-100 dark:border-white/5 pb-6">
                          <div className="flex items-center gap-3">
-                             <div className="p-2 bg-violet-100 dark:bg-violet-500/20 rounded-lg text-violet-600 dark:text-violet-400">
-                                 <Layers className="w-5 h-5" />
+                             <div className="w-10 h-10 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
+                                 <Cpu className="w-5 h-5 text-violet-500" />
                              </div>
                              <div>
-                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white font-sans">Analysis Result: {currentRepoName}</h3>
-                                 <p className="text-xs text-slate-500 dark:text-slate-300 font-mono">
-                                     {new Date().toLocaleTimeString()} • {selectedStyle}
-                                 </p>
+                                 <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-white">{currentRepoName}_Export</h3>
+                                 <p className="text-[10px] text-slate-500 font-mono">STYLE: {selectedStyle} • RATIO: {selectedRatio}</p>
                              </div>
                          </div>
                          <div className="flex items-center gap-2">
-                             {/* 3D Toggle */}
-                             {!infographic3DData && !generating3D && (
+                             {infographicData && !infographic3DData && !generating3D && (
                                 <button 
                                   onClick={handleGenerate3D}
-                                  className="px-4 py-2 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/30 rounded-lg font-bold text-xs transition-all flex items-center gap-2"
+                                  className="px-4 py-2 bg-fuchsia-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg"
                                 >
-                                  <Box className="w-4 h-4" /> 3D Model
+                                  <Box className="w-4 h-4" /> Render 3D
                                 </button>
                              )}
-                             <a 
-                                href={`data:image/png;base64,${infographic3DData || infographicData}`} 
-                                download={`${currentRepoName}-infographic.png`}
-                                className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-bold text-xs transition-all flex items-center gap-2 shadow-lg"
+                             {infographic3DData && (
+                                 <div className="flex p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-white/5 mr-2">
+                                     <button onClick={() => setShow3DMode(false)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${!show3DMode ? 'bg-white dark:bg-slate-800 text-violet-500 shadow-md' : 'text-slate-400'}`}>2D</button>
+                                     <button onClick={() => setShow3DMode(true)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${show3DMode ? 'bg-white dark:bg-slate-800 text-violet-500 shadow-md' : 'text-slate-400'}`}>3D</button>
+                                 </div>
+                             )}
+                             <button 
+                                onClick={() => setFullScreenImage({ src: `data:image/png;base64,${currentImg}`, alt: "Blueprint Result" })} 
+                                className="p-3 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-500"
+                            >
+                                <Eye className="w-5 h-5" />
+                            </button>
+                             <button 
+                                onClick={handleDownload}
+                                className="p-3 bg-violet-500 text-white rounded-xl shadow-lg hover:bg-violet-600 transition-colors"
                              >
-                                 <Download className="w-4 h-4" /> Download
-                             </a>
+                                 <Download className="w-5 h-5" />
+                             </button>
                          </div>
                     </div>
 
-                    {/* Main Image */}
-                    <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-white/10 group bg-slate-100 dark:bg-slate-950 min-h-[400px]">
+                    <div className="relative group cursor-zoom-in rounded-3xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/40 min-h-[400px] mb-8 shadow-inner">
                          {generating3D && (
                              <div className="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
                                  <Loader2 className="w-10 h-10 text-fuchsia-500 animate-spin" />
-                                 <p className="text-white font-mono text-sm animate-pulse">Rendering 3D Holographic Model...</p>
+                                 <p className="text-white font-mono text-sm animate-pulse tracking-widest">Generating 3D Holographic Matrix...</p>
                              </div>
                          )}
                          <img 
-                            src={`data:image/png;base64,${infographic3DData || infographicData}`} 
-                            alt="Generated Infographic" 
-                            className="w-full h-auto object-contain cursor-pointer"
-                            onClick={() => setFullScreenImage({src: `data:image/png;base64,${infographic3DData || infographicData}`, alt: "Result"})}
+                            src={`data:image/png;base64,${currentImg}`} 
+                            alt="Architectural Blueprint" 
+                            className="w-full h-auto object-contain transition-transform group-hover:scale-[1.02]"
+                            onClick={() => setFullScreenImage({src: `data:image/png;base64,${currentImg}`, alt: "Architectural Result"})}
                         />
-                         <button 
-                            onClick={() => setFullScreenImage({src: `data:image/png;base64,${infographic3DData || infographicData}`, alt: "Result"})}
-                            className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
-                         >
-                            <Maximize className="w-5 h-5" />
-                         </button>
                     </div>
-
-                    <MetadataEditor initialData={metadata} onChange={setMetadata} />
+                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5">
+                        <MetadataEditor initialData={metadata} onChange={setMetadata} />
+                    </div>
                  </div>
             ) : (
-                // EMPTY STATE GUIDE
-                <div className="flex-1 glass-panel rounded-3xl p-8 border-dashed border-2 border-slate-300 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 flex flex-col justify-center">
-                    <div className="text-center max-w-lg mx-auto mb-10">
-                        <div className="w-20 h-20 bg-violet-100 dark:bg-violet-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner transform rotate-3">
-                            <Code className="w-10 h-10 text-violet-500 dark:text-violet-400" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-slate-800 dark:text-white font-sans mb-3">Ready to Analyze</h3>
-                        <p className="text-slate-500 dark:text-slate-200 text-sm leading-relaxed">
-                            Link2Infographic will scan the file structure of any public repository to identify patterns, data flow, and architecture.
-                        </p>
-                    </div>
-
-                    {/* How It Works Steps */}
-                    <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full">
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/5 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <Layers className="w-16 h-16 text-slate-900 dark:text-white" />
+                <div className="flex-1 glass-panel border-2 border-dashed border-slate-300 dark:border-white/10 rounded-[40px] flex flex-col p-8 md:p-12 bg-white/40 dark:bg-slate-900/40 relative overflow-hidden">
+                    <div className="relative z-10 h-full flex flex-col">
+                        <div className="text-center space-y-3 mb-12">
+                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto border border-slate-200 dark:border-white/10">
+                                <HelpCircle className="w-8 h-8 text-slate-400" />
                             </div>
-                            <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xs font-mono">1</div>
-                                2D Blueprint
-                            </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
-                                Best for understanding logic flow. The AI maps "Input -> Process -> Output" and labels data types (JSON, Auth, etc.).
-                            </p>
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white font-sans">GitFlow Guide</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Map repository architectural blueprints and logic flows.</p>
                         </div>
 
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-950 border border-fuchsia-200 dark:border-fuchsia-500/20 relative overflow-hidden group">
-                             <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <Box className="w-16 h-16 text-fuchsia-500" />
+                        <div className="grid gap-6 flex-1">
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-indigo-500/10 rounded-2xl overflow-hidden border border-indigo-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <Layers className="w-10 h-10 text-indigo-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">2D_LOGIC_FLOW</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed italic">"Identify Input -> Process -> Output pathways across the codebase structure."</p>
+                                </div>
                             </div>
-                            <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center text-xs font-mono">2</div>
-                                3D Hologram
-                            </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
-                                Best for presentations. Renders the codebase as a complex "city" or physical model on a desk. Visual impact over strict accuracy.
-                            </p>
+
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-fuchsia-500/10 rounded-2xl overflow-hidden border border-fuchsia-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <Box className="w-10 h-10 text-fuchsia-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">3D_MODELING</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">"Visualize repository complexity as a spatial topographic hologram."</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-6 group">
+                                <div className="w-24 h-24 bg-blue-500/10 rounded-2xl overflow-hidden border border-blue-500/20 shrink-0 flex items-center justify-center relative shadow-inner">
+                                    <Code className="w-10 h-10 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
+                                <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">ARCH_SCANNER</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url > technical mapping of public GitHub repositories and frameworks...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <div className="absolute inset-0 -z-10 opacity-[0.03] dark:opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #8b5cf6 2px, transparent 2px)', backgroundSize: '32px 32px' }}></div>
                 </div>
             )}
         </div>
-
       </div>
 
-      {/* History Grid */}
       {history.length > 0 && (
           <div className="pt-12 border-t border-slate-200 dark:border-white/10 animate-in fade-in">
-              <div className="flex items-center gap-2 mb-6 text-slate-500 dark:text-slate-300">
-                  <Clock className="w-4 h-4" />
-                  <h3 className="text-sm font-mono uppercase tracking-wider font-bold">Recent Blueprints</h3>
+              <div className="flex items-center gap-2 mb-8 text-slate-400">
+                  <History className="w-4 h-4" />
+                  <h2 className="text-sm font-bold uppercase tracking-widest">Blueprint Archive</h2>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                   {history.map((item) => (
                       <button 
                         key={item.id}
-                        onClick={() => loadFromHistory(item)}
-                        className="group bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 hover:border-violet-500/50 rounded-xl overflow-hidden text-left transition-all hover:shadow-lg dark:hover:shadow-neon-violet hover:bg-slate-50 dark:hover:bg-slate-800"
+                        onClick={() => {
+                            if (item.is3D) { setInfographic3DData(item.imageData); setInfographicData(null); setShow3DMode(true); }
+                            else { setInfographicData(item.imageData); setInfographic3DData(null); setShow3DMode(false); }
+                            setCurrentRepoName(item.repoName);
+                        }}
+                        className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-violet-500/50 rounded-[32px] overflow-hidden text-left transition-all hover:shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 p-2"
                       >
-                          <div className="aspect-[3/4] relative overflow-hidden bg-slate-100 dark:bg-slate-950">
-                              <img src={`data:image/png;base64,${item.imageData}`} alt={item.repoName} className="w-full h-full object-cover opacity-90 dark:opacity-70 group-hover:opacity-100 transition-opacity" />
+                          <div className="aspect-[3/4] relative overflow-hidden rounded-[24px] bg-slate-100 dark:bg-black/40">
+                              <img src={`data:image/png;base64,${item.imageData}`} alt={item.repoName} className="w-full h-full object-cover opacity-90 transition-opacity group-hover:scale-110 duration-700" />
                               {item.is3D && (
-                                  <div className="absolute top-2 right-2 bg-fuchsia-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/10">3D</div>
+                                  <div className="absolute top-3 right-3 bg-violet-500 text-white text-[9px] font-bold px-2 py-1 rounded-full shadow-lg">3D</div>
                               )}
                           </div>
-                          <div className="p-3">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">{item.repoName}</p>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-300 mt-1 font-medium truncate">{item.style}</p>
+                          <div className="p-4">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate uppercase tracking-tighter">{item.repoName}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-mono">{item.style}</p>
                           </div>
                       </button>
                   ))}

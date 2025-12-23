@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  body {
+    @apply font-sans antialiased selection:bg-violet-500/30 selection:text-violet-900 dark:selection:text-violet-200;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
   html.dark body {
     color: #ffffff;
   }
