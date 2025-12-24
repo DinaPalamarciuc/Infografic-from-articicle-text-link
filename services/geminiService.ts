@@ -5,7 +5,7 @@
 */
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { RepoFileTree, Citation, GeminiModel } from '../types';
+import { RepoFileTree, Citation, GeminiModel, ImageMetadata } from '../types';
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
@@ -53,6 +53,47 @@ export async function processVisionTask(
     } catch (error: any) {
         console.error("Vision task failed:", error);
         throw error;
+    }
+}
+
+export async function extractImageMetadata(
+    base64Data: string, 
+    mimeType: string, 
+    context: string,
+    model: GeminiModel = 'gemini-3-flash-preview'
+): Promise<Partial<ImageMetadata>> {
+    const ai = getAiClient();
+    const prompt = `Analyze this generated infographic. Context: ${context}.
+    Extract highly relevant SEO metadata and IPTC tags. 
+    Provide a professional title, a detailed 2-3 sentence description, and 10 highly relevant keywords separated by commas.
+    Return ONLY a valid JSON object with keys: title, description, keywords.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: { 
+                parts: [
+                    { inlineData: { data: base64Data, mimeType } }, 
+                    { text: prompt }
+                ] 
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        keywords: { type: Type.STRING }
+                    },
+                    required: ["title", "description", "keywords"]
+                }
+            }
+        });
+        return JSON.parse(response.text || '{}');
+    } catch (error) {
+        console.error("Metadata extraction failed:", error);
+        return {};
     }
 }
 

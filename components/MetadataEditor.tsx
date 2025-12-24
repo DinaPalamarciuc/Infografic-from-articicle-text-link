@@ -1,9 +1,10 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ImageMetadata } from '../types';
 import { Tag, User, Copyright, Calendar, FileText, Code, CheckSquare, Info } from 'lucide-react';
 
@@ -22,18 +23,38 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ initialData, onChange }
     date: initialData?.date || new Date().toISOString().slice(0, 16)
   });
 
-  const [jsonInput, setJsonInput] = useState<string>(JSON.stringify(formData, null, 2));
+  const [jsonInput, setJsonInput] = useState<string>('');
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const lastUpdateRef = useRef<string>('');
 
-  // Sync Form -> Parent
+  // Actualizare de la părinte (ex: când AI-ul propune meta-date noi)
   useEffect(() => {
-    onChange(formData);
-    // Also update JSON view when form changes (if not currently focused on JSON, but simpler to just sync)
-    setJsonInput(JSON.stringify(formData, null, 2));
-  }, [formData, onChange]);
+    if (initialData) {
+      const merged = {
+        title: initialData.title ?? formData.title,
+        author: initialData.author ?? formData.author,
+        description: initialData.description ?? formData.description,
+        keywords: initialData.keywords ?? formData.keywords,
+        copyright: initialData.copyright ?? formData.copyright,
+        date: initialData.date ?? formData.date,
+      };
+      
+      const str = JSON.stringify(merged);
+      if (str !== lastUpdateRef.current) {
+        lastUpdateRef.current = str;
+        setFormData(merged);
+        setJsonInput(JSON.stringify(merged, null, 2));
+      }
+    }
+  }, [initialData]);
 
-  const handleChange = (field: keyof ImageMetadata, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  // Sincronizare imediată la fiecare apăsare de tastă
+  const handleFieldChange = (field: keyof ImageMetadata, value: string) => {
+    const next = { ...formData, [field]: value };
+    setFormData(next);
+    setJsonInput(JSON.stringify(next, null, 2));
+    lastUpdateRef.current = JSON.stringify(next);
+    onChange(next); // Notificăm părintele imediat
   };
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -41,10 +62,13 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ initialData, onChange }
     setJsonInput(newVal);
     try {
         const parsed = JSON.parse(newVal);
-        setFormData(prev => ({ ...prev, ...parsed }));
+        const next = { ...formData, ...parsed };
+        setFormData(next);
         setJsonError(null);
+        lastUpdateRef.current = JSON.stringify(next);
+        onChange(next);
     } catch (err) {
-        setJsonError("Invalid JSON format");
+        setJsonError("JSON invalid");
     }
   };
 
@@ -55,96 +79,83 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ initialData, onChange }
            <Tag className="w-4 h-4 text-slate-600 dark:text-slate-300" />
         </div>
         <div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 font-mono uppercase tracking-wider">Image Metadata Editor</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">Define standard XMP/IPTC tags before download</p>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 font-mono uppercase tracking-wider">Editor Meta-date Imagine</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">Aceste date vor fi injectate direct în fișierul descărcat</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column: Standard Meta */}
         <div className="space-y-5">
-            <h4 className="text-base font-semibold text-slate-700 dark:text-slate-300 font-sans border-b border-slate-200 dark:border-white/10 pb-2 mb-4">Standard Tags</h4>
+            <h4 className="text-base font-semibold text-slate-700 dark:text-slate-300 font-sans border-b border-slate-200 dark:border-white/10 pb-2 mb-4">Câmpuri Standard</h4>
             
-            {/* Title */}
             <div className="space-y-1.5">
-                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-medium">Title</label>
-                <div className="relative">
-                    <input 
-                        type="text" 
-                        value={formData.title}
-                        onChange={(e) => handleChange('title', e.target.value)}
-                        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono"
-                        placeholder="Enter image title..."
-                    />
-                </div>
+                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 font-medium">Titlu</label>
+                <input 
+                    type="text" 
+                    value={formData.title}
+                    onChange={(e) => handleFieldChange('title', e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono"
+                />
             </div>
 
-            {/* Author */}
             <div className="space-y-1.5">
-                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><User className="w-3 h-3"/> Author</label>
+                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><User className="w-3 h-3"/> Autor</label>
                 <input 
                     type="text" 
                     value={formData.author}
-                    onChange={(e) => handleChange('author', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono"
+                    onChange={(e) => handleFieldChange('author', e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono"
                 />
             </div>
 
-            {/* Description */}
             <div className="space-y-1.5">
-                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><FileText className="w-3 h-3"/> Description</label>
+                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><FileText className="w-3 h-3"/> Descriere</label>
                 <textarea 
                     value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
+                    onChange={(e) => handleFieldChange('description', e.target.value)}
                     rows={3}
-                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono resize-none"
-                    placeholder="Short description of the infographic..."
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono resize-none"
                 />
             </div>
 
-            {/* Keywords */}
             <div className="space-y-1.5">
-                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><Tag className="w-3 h-3"/> Keywords (comma separated)</label>
+                <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><Tag className="w-3 h-3"/> Cuvinte Cheie</label>
                 <input 
                     type="text" 
                     value={formData.keywords}
-                    onChange={(e) => handleChange('keywords', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono"
+                    onChange={(e) => handleFieldChange('keywords', e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono"
                 />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                {/* Copyright */}
                 <div className="space-y-1.5">
                     <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><Copyright className="w-3 h-3"/> Copyright</label>
                     <input 
                         type="text" 
                         value={formData.copyright}
-                        onChange={(e) => handleChange('copyright', e.target.value)}
-                        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono"
+                        onChange={(e) => handleFieldChange('copyright', e.target.value)}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono"
                     />
                 </div>
-
-                {/* Date */}
                 <div className="space-y-1.5">
-                    <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><Calendar className="w-3 h-3"/> Creation Date</label>
+                    <label className="text-sm text-slate-500 dark:text-slate-400 font-mono ml-1 flex items-center gap-1 font-medium"><Calendar className="w-3 h-3"/> Dată Creare</label>
                     <input 
                         type="datetime-local" 
                         value={formData.date}
-                        onChange={(e) => handleChange('date', e.target.value)}
-                        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500/70 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-mono"
+                        onChange={(e) => handleFieldChange('date', e.target.value)}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 ring-emerald-500 transition-all font-mono"
                     />
                 </div>
             </div>
         </div>
 
-        {/* Right Column: Advanced/Raw */}
         <div className="space-y-5 h-full flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2 mb-4">
-                 <h4 className="text-base font-semibold text-slate-700 dark:text-slate-300 font-sans">Advanced (JSON Format)</h4>
+                 <h4 className="text-base font-semibold text-slate-700 dark:text-slate-300 font-sans">Avansat (JSON)</h4>
                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded border border-slate-200 dark:border-white/5">
                     <Code className="w-3 h-3" />
-                    <span>Editable Raw Data</span>
+                    <span>Live Sync</span>
                  </div>
             </div>
             
@@ -165,7 +176,7 @@ const MetadataEditor: React.FC<MetadataEditorProps> = ({ initialData, onChange }
                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${!jsonError ? 'bg-emerald-500 border-emerald-500' : 'border-slate-400 dark:border-slate-600'}`}>
                     {!jsonError && <CheckSquare className="w-3 h-3 text-white" />}
                 </div>
-                <span className="text-sm text-slate-500 dark:text-slate-400">Sync active. Metadata will be applied to download payload.</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Datele sunt sincronizate și gata pentru descărcare.</span>
             </div>
         </div>
       </div>

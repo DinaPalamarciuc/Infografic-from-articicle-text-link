@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { fetchRepoFileTree } from '../services/githubService';
-import { generateInfographic, improvePrompt } from '../services/geminiService';
+import { generateInfographic, improvePrompt, extractImageMetadata } from '../services/geminiService';
 import { downloadWithMetadata } from '../services/imageService';
 import { RepoFileTree, ViewMode, RepoHistoryItem, ImageMetadata, GeminiModel } from '../types';
 import { 
@@ -214,14 +214,6 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
     setLoading(true);
     setCurrentRepoName(repoDetails.repo);
     
-    setMetadata(prev => ({
-        ...prev,
-        title: `${repoDetails.repo} Architecture`,
-        description: `Visual analysis of ${repoDetails.owner}/${repoDetails.repo}`,
-        keywords: `github, ${repoDetails.repo}, architecture, diagram`,
-        date: new Date().toISOString().slice(0, 16)
-    }));
-
     try {
       setLoadingStage('CONNECTING TO GITHUB');
       const fileTree = await fetchRepoFileTree(repoDetails.owner, repoDetails.repo);
@@ -238,6 +230,18 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
       if (infographicBase64) {
         setInfographicData(infographicBase64);
         addToHistory(repoDetails.repo, infographicBase64, false, styleToUse);
+        
+        setLoadingStage('OPTIMIZING SEO METADATA');
+        const aiMeta = await extractImageMetadata(infographicBase64, 'image/png', `GitHub Repository: ${repoDetails.owner}/${repoDetails.repo}`, 'gemini-3-flash-preview');
+
+        setMetadata({
+            title: aiMeta.title || `${repoDetails.repo} - Architectural Blueprint`,
+            author: repoDetails.owner,
+            description: aiMeta.description || `Visual mapping of ${repoDetails.owner}/${repoDetails.repo} structure.`,
+            keywords: aiMeta.keywords || `github, architecture, ${repoDetails.repo}`,
+            copyright: `© ${new Date().getFullYear()} ${repoDetails.owner}`,
+            date: new Date().toISOString().slice(0, 16)
+        });
       } else {
           throw new Error("Failed to generate blueprint.");
       }
@@ -265,6 +269,14 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
           setInfographic3DData(data);
           setShow3DMode(true);
           addToHistory(currentRepoName, data, true, styleToUse);
+          
+          const aiMeta = await extractImageMetadata(data, 'image/png', `3D Holographic Model of ${currentRepoName} repo`, 'gemini-3-flash-preview');
+          setMetadata(prev => ({
+              ...prev,
+              title: aiMeta.title || `${currentRepoName} - 3D Model`,
+              description: aiMeta.description || prev.description,
+              keywords: aiMeta.keywords || prev.keywords
+          }));
       }
     } catch (err: any) {
       handleApiError(err);

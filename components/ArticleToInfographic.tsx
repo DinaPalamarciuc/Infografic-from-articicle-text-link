@@ -5,7 +5,7 @@
 */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { generateArticleInfographic, improvePrompt } from '../services/geminiService';
+import { generateArticleInfographic, improvePrompt, extractImageMetadata } from '../services/geminiService';
 import { downloadWithMetadata } from '../services/imageService';
 import { Citation, ArticleHistoryItem, ImageMetadata, GeminiModel } from '../types';
 import { 
@@ -211,19 +211,24 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
       return;
     }
 
+    // Safe title extraction
+    let titleFromInput = content.slice(0, 30) + '...';
+    if (inputMode === 'url') {
+        try {
+            titleFromInput = new URL(content).hostname;
+        } catch (e) {
+            // If it's not a full valid URL with protocol, try prepending https
+            try {
+                titleFromInput = new URL('https://' + content).hostname;
+            } catch (e2) {
+                // Still failed, keep default slice
+            }
+        }
+    }
+
     setLoading(true);
     setLoadingStage('ANALYZING SOURCE CONTENT');
     
-    const title = inputMode === 'url' ? new URL(content).hostname : (content.slice(0, 30) + '...');
-    
-    setMetadata(prev => ({
-        ...prev,
-        title: `${title} Infographic`,
-        description: `Infographic generated from source`,
-        keywords: `infographic, ${contentType}`,
-        date: new Date().toISOString().slice(0, 16)
-    }));
-
     try {
       const styleToUse = selectedStyle === 'Custom' ? customStyle : selectedStyle;
       
@@ -245,11 +250,23 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
         
         onAddToHistory({
             id: Date.now().toString(),
-            title: title,
+            title: titleFromInput,
             url: inputMode === 'url' ? content : 'Manual Text',
             imageData: result.imageData,
             citations: result.citations,
             date: new Date()
+        });
+
+        setLoadingStage('SUMMARIZING VISUAL CONTENT');
+        const aiMeta = await extractImageMetadata(result.imageData, 'image/png', `Article: ${titleFromInput}`, 'gemini-3-flash-preview');
+
+        setMetadata({
+            title: aiMeta.title || `${titleFromInput} - Visual Summary`,
+            author: 'Link2Infographic AI',
+            description: aiMeta.description || `${contentType === 'article' ? 'Article' : 'Product'} summary infographic generated in ${selectedStyle} style.`,
+            keywords: aiMeta.keywords || `infographic, summary, ${contentType}, ${selectedStyle.toLowerCase()}`,
+            copyright: `© ${new Date().getFullYear()} Link2Infographic`,
+            date: new Date().toISOString().slice(0, 16)
         });
       } else {
         throw new Error('Image generation failed.');
@@ -265,7 +282,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
   const handleDownload = () => {
     if (!infographicData) return;
     const safeTitle = (metadata.title || 'infographic').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const filename = `${safeTitle}_with_meta.png`;
+    const filename = `${safeTitle}.png`;
     downloadWithMetadata(infographicData, metadata, filename);
   };
 
