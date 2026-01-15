@@ -492,7 +492,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
                                 <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
                                 <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
                                     <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">2D_LOGIC_FLOW</h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed italic">"Identify Input -> Process -> Output pathways across the codebase structure."</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed italic">"Identify Input -&gt; Process -&gt; Output pathways across the codebase structure."</p>
                                 </div>
                             </div>
 
@@ -514,7 +514,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
                                 <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
                                 <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
                                     <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">ARCH_SCANNER</h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url > technical mapping of public GitHub repositories and frameworks...</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url &gt; technical mapping of public GitHub repositories and frameworks...</p>
                                 </div>
                             </div>
                         </div>
