@@ -577,7 +577,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, on
                                 <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />
                                 <div className="flex-1 p-5 bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
                                     <h3 className="font-bold text-slate-900 dark:text-white text-xs mb-1 uppercase tracking-wider tracking-widest">TECH DOCUMENTS</h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url > visual mapping of technical documentation and developer guides...</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">url &gt; visual mapping of technical documentation and developer guides...</p>
                                 </div>
                             </div>
                         </div>
